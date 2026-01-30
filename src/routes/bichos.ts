@@ -52,6 +52,6 @@ export async function bichosRoutes(app: FastifyInstance) {
             if (bicho) return bicho;
         }
 
-        return reply.status(404).send();
+        return reply.status(404).send(null);
     });
 }

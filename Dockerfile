@@ -39,4 +39,4 @@ ENV NODE_ENV=production
 
 # Comando de entrada
 # Usa um script simples para iniciar migrations (se precisar) e depois o server
-CMD ["sh", "-c", "node init-db.js && node dist/server.js"]
+CMD ["sh", "-c", "node dist/init-db.js && node dist/server.js"]

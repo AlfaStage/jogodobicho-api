@@ -1,4 +1,4 @@
-import db from './db';
+import db from './db.js';
 
 const schema = `
   CREATE TABLE IF NOT EXISTS lotericas (
@@ -25,8 +25,22 @@ const schema = `
     bicho TEXT NOT NULL,
     FOREIGN KEY(resultado_id) REFERENCES resultados(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS horoscopo_diario (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    signo TEXT NOT NULL,
+    texto TEXT,
+    numeros TEXT,
+    UNIQUE(data, signo)
+  );
+
+  CREATE TABLE IF NOT EXISTS webhooks (
+    id TEXT PRIMARY KEY,
+    url TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
   
-  -- Seed Lotericas
   INSERT OR IGNORE INTO lotericas (id, slug, nome) VALUES ('1', 'pt-rio', 'PT Rio');
   INSERT OR IGNORE INTO lotericas (id, slug, nome) VALUES ('2', 'look', 'Look Goiás');
   INSERT OR IGNORE INTO lotericas (id, slug, nome) VALUES ('3', 'federal', 'Federal');

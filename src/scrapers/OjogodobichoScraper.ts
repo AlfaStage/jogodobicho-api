@@ -1,0 +1,168 @@
+import { ScraperBase } from './ScraperBase.js';
+import db from '../db.js';
+import { randomUUID } from 'crypto';
+import { WebhookService } from '../services/WebhookService.js';
+
+export class OjogodobichoScraper extends ScraperBase {
+    private webhookService = new WebhookService();
+
+    constructor() {
+        super('https://www.ojogodobicho.com/deu_no_poste.htm');
+    }
+
+    async execute(): Promise<void> {
+        console.log('Iniciando scrape de ojogodobicho.com...');
+        const $ = await this.fetchHtml();
+
+        if (!$) {
+            console.error('Falha ao obter HTML.');
+            return;
+        }
+
+        const tables = $('table');
+        console.log(`Encontradas ${tables.length} tabelas.`);
+
+        for (let i = 0; i < tables.length; i++) {
+            const table = $(tables[i]);
+            const caption = table.find('caption').text().trim();
+            console.log(`Processando tabela: ${caption}`);
+
+            // Tentar extrair data do caption
+            const dataMatch = caption.match(/(\d{1,2}) de ([A-Za-zç]+) de (\d{4})/);
+            if (!dataMatch) {
+                console.log(`Ignorando tabela sem data válida: ${caption}`);
+                continue;
+            }
+
+            const dia = dataMatch[1].padStart(2, '0');
+            const mesNome = dataMatch[2].toLowerCase();
+            const ano = dataMatch[3];
+            const meses: { [key: string]: string } = {
+                'janeiro': '01', 'fevereiro': '02', 'mar\u00E7o': '03', 'abril': '04',
+                'maio': '05', 'junho': '06', 'julho': '07', 'agosto': '08',
+                'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12'
+            };
+            const mes = meses[mesNome] || meses[mesNome.replace('ç', 'c')];
+
+            if (!mes) {
+                console.error(`Mês desconhecido: ${mesNome}`);
+                continue;
+            }
+
+            const dataIso = `${ano}-${mes}-${dia}`;
+            console.log(`Data extraída: ${dataIso}`);
+
+            const headers: string[] = [];
+            table.find('thead th').each((idx, el) => {
+                const txt = $(el).text().trim();
+                if (txt) headers.push(txt);
+            });
+
+            const rows = table.find('tbody tr');
+
+            const insertResultado = db.prepare(`
+            INSERT OR IGNORE INTO resultados (id, data, horario, loterica_slug) 
+            VALUES (?, ?, ?, ?)
+        `);
+
+            const getResultadoId = db.prepare(`
+            SELECT id FROM resultados WHERE data = ? AND horario = ? AND loterica_slug = ?
+        `);
+
+            const insertPremio = db.prepare(`
+            INSERT INTO premios (id, resultado_id, posicao, milhar, grupo, bicho)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `);
+
+            // Mapa para agrupar prêmios por resultado: Chave = "HORARIO-SLUG"
+            const resultadosMap = new Map<string, { premios: any[] }>();
+
+            rows.each((rowIdx, rowEl) => {
+                const cells = $(rowEl).find('td');
+                const posicaoTxt = $(cells[0]).text().trim();
+                const posicao = parseInt(posicaoTxt);
+
+                if (isNaN(posicao)) return;
+
+                for (let j = 1; j < cells.length; j++) {
+                    if (j - 1 >= headers.length) break;
+
+                    const cell = $(cells[j]);
+                    const horario = headers[j - 1];
+                    const conteudo = cell.text().trim();
+                    const bichoNome = cell.attr('title') || 'Desconhecido';
+
+                    if (!horario) continue;
+                    if (conteudo === '0000-0' || conteudo === '000-0' || conteudo === '') continue;
+
+                    const parts = conteudo.split('-');
+                    if (parts.length < 2) continue;
+
+                    const milhar = parts[0];
+                    const grupo = parseInt(parts[1]);
+                    const lotericaSlug = 'pt-rio'; // Default
+
+                    const key = `${horario}-${lotericaSlug}`;
+                    if (!resultadosMap.has(key)) {
+                        resultadosMap.set(key, { premios: [] });
+                    }
+                    resultadosMap.get(key)!.premios.push({ posicao, milhar, grupo, bicho: bichoNome });
+                }
+            });
+
+            // Processar resultados agrupados
+            const runTransaction = db.transaction(() => {
+                for (const [key, { premios }] of resultadosMap.entries()) {
+                    const [horario, lotericaSlug] = key.split('-');
+                    let resultId: string | undefined;
+
+                    // Verifica se já existe o resultado (header)
+                    const existing = getResultadoId.get(dataIso, horario, lotericaSlug) as { id: string } | undefined;
+                    let isNew = false;
+
+                    if (existing) {
+                        resultId = existing.id;
+                    } else {
+                        resultId = randomUUID();
+                        insertResultado.run(resultId, dataIso, horario, lotericaSlug);
+                        isNew = true;
+                    }
+
+                    // Se for novo, insere premios e notifica
+                    // Para evitar duplicidade de premios em re-runs de update, deletamos os premios antigos antes?
+                    // Ou assumimos que 'isNew' garante que não tem premios?
+                    // INSERT OR IGNORE no resultado significa que se existe, não é new.
+                    // Se não é new, não fazemos nada (imutabilidade do resultado do bicho).
+
+                    if (isNew) {
+                        const prizesData = [];
+                        for (let p = 0; p < premios.length; p++) {
+                            const { posicao, milhar, grupo, bicho } = premios[p];
+                            insertPremio.run(randomUUID(), resultId, posicao, milhar, grupo, bicho);
+                            prizesData.push({ posicao, milhar, grupo, bicho });
+                        }
+
+                        // Notificar Webhook (fora da transaction? Não, bom garantir que commitou. Mas aqui dentro é sync)
+                        // Vamos logar para fazer depois.
+                        console.log(`Novo resultado salvo: ${lotericaSlug} ${horario}`);
+
+                        // Fire and forget webhook
+                        this.webhookService.notifyAll('novo_resultado', {
+                            loterica: lotericaSlug,
+                            data: dataIso,
+                            horario: horario,
+                            premios: prizesData
+                        }).catch((err: any) => console.error('Erro webhook:', err.message));
+                    }
+                }
+            });
+
+            try {
+                runTransaction();
+                console.log(`Tabela salva com sucesso.`);
+            } catch (err) {
+                console.error('Erro na transação:', err);
+            }
+        }
+    }
+}

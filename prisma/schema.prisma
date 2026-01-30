@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Loterica {
+  id        String      @id @default(uuid())
+  slug      String      @unique // ex: pt-rio, federal
+  nome      String
+  resultados Resultado[]
+}
+
+model Resultado {
+  id          String   @id @default(uuid())
+  data        DateTime
+  horario     String   // ex: 11:00, 14:00, 16:00, 18:00, Federal
+  lotericaId  String
+  loterica    Loterica @relation(fields: [lotericaId], references: [id])
+  premios     Premio[] // 1º ao 7º (ou mais)
+  criadoEm    DateTime @default(now())
+
+  @@unique([data, horario, lotericaId])
+}
+
+model Premio {
+  id          String    @id @default(uuid())
+  posicao     Int       // 1, 2, 3, 4, 5, 6, 7
+  milhar      String    // ex: 1234
+  grupo       Int       // ex: 9
+  bicho       String    // ex: Cobra
+  resultadoId String
+  resultado   Resultado @relation(fields: [resultadoId], references: [id], onDelete: Cascade)
+}
+
+model Bicho {
+  id      Int    @id // 1 a 25
+  nome    String // ex: Avestruz
+  dezenas String // ex: 01,02,03,04 (armazenado como string separada por virgula ou JSON simples)
+}
+
+model Signo {
+  id              Int    @id @default(autoincrement())
+  nome            String @unique // Aries, Touro...
+  dataInicio      String // ex: 21/03
+  dataFim         String // ex: 20/04
+  elemento        String // Fogo, Terra...
+  numerosSorte    String // ex: 1, 9, 15
+}

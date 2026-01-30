@@ -1,0 +1,43 @@
+{
+  "name": "jogodobicho-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "mcp": "tsx src/mcp/server.ts",
+    "mcp:sse": "tsx src/mcp/server-sse.ts",
+    "build": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@types/cron": "^2.0.1",
+    "@types/node": "^25.1.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@fastify/swagger": "^9.6.1",
+    "@fastify/swagger-ui": "^5.2.5",
+    "@modelcontextprotocol/sdk": "^1.25.3",
+    "@types/express": "^5.0.6",
+    "axios": "^1.13.4",
+    "better-sqlite3": "^12.6.2",
+    "cheerio": "^1.2.0",
+    "cron": "^4.4.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "fastify": "^5.7.2",
+    "fastify-type-provider-zod": "^6.1.0",
+    "sqlite3": "^5.1.7",
+    "zod": "^4.3.6"
+  }
+}

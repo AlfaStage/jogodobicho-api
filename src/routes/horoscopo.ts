@@ -27,6 +27,6 @@ export async function horoscopoRoutes(app: FastifyInstance) {
 
         // Fallback: se não tiver no banco (scraper não rodou), retorna vazio ou avisa
         // O ideal é o scraper rodar.
-        return results;
+        return results as any[];
     });
 }

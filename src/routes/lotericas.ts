@@ -19,6 +19,6 @@ export async function lotericasRoutes(app: FastifyInstance) {
         }
     }, async () => {
         const stmt = db.prepare('SELECT slug, nome FROM lotericas');
-        return stmt.all();
+        return stmt.all() as any[];
     });
 }

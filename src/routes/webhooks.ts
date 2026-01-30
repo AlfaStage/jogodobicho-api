@@ -37,7 +37,7 @@ export async function webhooksRoutes(app: FastifyInstance) {
             }
         }
     }, async () => {
-        return service.list();
+        return service.list() as any[];
     });
 
     server.delete('/:id', {

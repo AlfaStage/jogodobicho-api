@@ -21,14 +21,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --production
 
-# Copiar build e scripts necessários
+# Copiar build (contém o init-db.js compilado)
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/src ./src 
-# Copiamos src pois alguns scrapers/serviços podem depender de arquivos não compilados ou estrutura (ex: init-db.js se rodar com node)
-# Mas idealmente tudo estaria em dist. O script init-db.js é JS, então ok.
-
-# Copiar script de inicialização do DB se necessário
-COPY src/init-db.js ./init-db.js
 
 # Expor portas (API e SSE)
 EXPOSE 3334 3001

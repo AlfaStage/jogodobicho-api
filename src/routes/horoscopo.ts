@@ -9,8 +9,12 @@ export async function horoscopoRoutes(app: FastifyInstance) {
     server.get('/', {
         schema: {
             summary: 'Horóscopo do Dia',
-            description: 'Retorna as previsões do horóscopo para todos os signos na data atual.',
+            description: 'Retorna as previsões do horóscopo para todos os signos. Se não informada, usa a data atual.',
             tags: ['Horóscopo'],
+            querystring: z.object({
+                data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato YYYY-MM-DD").optional()
+                    .describe('Data da previsão (ex: 2024-05-20)')
+            }),
             response: {
                 200: z.array(z.object({
                     signo: z.string().describe('Nome do signo'),
@@ -20,14 +24,13 @@ export async function horoscopoRoutes(app: FastifyInstance) {
                 })).describe('Lista de previsões por signo')
             }
         }
-    }, async () => {
-        const today = new Date().toISOString().split('T')[0];
+    }, async (request) => {
+        const { data } = request.query;
+        const targetDate = data || new Date().toISOString().split('T')[0];
         // Retornar do banco
         const stmt = db.prepare('SELECT signo, texto, numeros, data FROM horoscopo_diario WHERE data = ?');
-        const results = stmt.all(today);
+        const results = stmt.all(targetDate);
 
-        // Fallback: se não tiver no banco (scraper não rodou), retorna vazio ou avisa
-        // O ideal é o scraper rodar.
         return results as any[];
     });
 }

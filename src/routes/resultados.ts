@@ -13,8 +13,10 @@ export async function resultadosRoutes(app: FastifyInstance) {
             description: 'Retorna uma lista dos últimos resultados filtrados por data ou lotérica.',
             tags: ['Resultados'],
             querystring: z.object({
-                data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato YYYY-MM-DD").optional().describe('Filtra por data (ex: 2024-05-20)'),
-                loterica: z.string().optional().describe('Filtra por slug da lotérica (ex: pt-rio)'),
+                data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato YYYY-MM-DD").optional()
+                    .describe('Filtra por data (ex: 2024-05-20) - Formato YYYY-MM-DD'),
+                loterica: z.string().optional()
+                    .describe('Filtra por slug da lotérica (ex: pt-rio, look-goias, federal)'),
             }),
             response: {
                 200: z.array(z.object({
@@ -45,16 +47,14 @@ export async function resultadosRoutes(app: FastifyInstance) {
         if (data) {
             query += ' AND r.data = ?';
             params.push(data);
-        } else {
-            // Se não filtrar data, pegar a última disponível? Ou limitar?
-            // Vamos limitar a 10 ultimos resultados se sem filtro
-            query += ' ORDER BY r.data DESC, r.horario DESC LIMIT 10';
         }
 
         if (loterica) {
             query += ' AND r.loterica_slug = ?';
             params.push(loterica);
         }
+
+        query += ' ORDER BY r.data DESC, r.horario DESC LIMIT 20';
 
         const stmt = db.prepare(query);
         const resultados = stmt.all(...params) as any[];

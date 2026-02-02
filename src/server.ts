@@ -86,7 +86,7 @@ app.get('/health', async () => {
 
 const start = async () => {
     try {
-        const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+        const port = process.env.PORT ? parseInt(process.env.PORT) : 3002;
         await app.listen({ port, host: '0.0.0.0' });
 
         // Iniciar Cron

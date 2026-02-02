@@ -37,16 +37,24 @@ const schema = `
 
   CREATE TABLE IF NOT EXISTS webhooks (
     id TEXT PRIMARY KEY,
-    url TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
-  
-  INSERT OR IGNORE INTO lotericas (id, slug, nome) VALUES ('1', 'pt-rio', 'PT Rio');
-  INSERT OR IGNORE INTO lotericas (id, slug, nome) VALUES ('2', 'look', 'Look Goiás');
-  INSERT OR IGNORE INTO lotericas (id, slug, nome) VALUES ('3', 'federal', 'Federal');
 `;
+
+
+
+
+import { LOTERIAS } from './config/loterias.js';
 
 console.log('Inicializando banco de dados...');
 db.exec(schema);
+
+// Inserir lotéricas do arquivo de configuração
+for (const loteria of LOTERIAS) {
+  db.prepare('INSERT OR IGNORE INTO lotericas (id, slug, nome) VALUES (?, ?, ?)')
+    .run(loteria.id, loteria.slug, loteria.nome);
+}
+console.log(`Lotericas verificadas: ${LOTERIAS.length}`);
+
 console.log('Banco de dados inicializado com sucesso!');
 db.close();

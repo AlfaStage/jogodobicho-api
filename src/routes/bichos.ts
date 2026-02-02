@@ -32,26 +32,39 @@ export async function bichosRoutes(app: FastifyInstance) {
                 query: z.string().describe('Número do grupo ou dezena')
             }),
             response: {
-                200: z.object({
+                200: z.array(z.object({
                     grupo: z.number(),
                     nome: z.string(),
                     dezenas: z.array(z.string()),
-                }).describe('Dados do bicho encontrado').optional(),
-                404: z.null().describe('Bicho não encontrado').optional()
+                })).describe('Lista de bichos encontrados que coincidem com o grupo ou dezena'),
+                404: z.null().describe('Nenhum bicho encontrado').optional()
             }
         }
     }, async (req, reply) => {
         const { query } = req.params;
+        const matches: any[] = [];
 
-        const grupo = parseInt(query);
-        if (!isNaN(grupo) && grupo >= 1 && grupo <= 25) {
-            const bicho = getBichoByGrupo(grupo);
-            if (bicho) return bicho;
+        // 1. Verificar se é um grupo (1-25)
+        const grupoNum = parseInt(query);
+        if (!isNaN(grupoNum) && grupoNum >= 1 && grupoNum <= 25) {
+            const bicho = getBichoByGrupo(grupoNum);
+            if (bicho) matches.push(bicho);
         }
 
-        if (query.length === 2) {
-            const bicho = getBichoByDezena(query);
-            if (bicho) return bicho;
+        // 2. Verificar se é uma dezena (00-99)
+        // Normaliza a dezena para garantir 2 dígitos se for busca por dezena específica
+        const dezenaBusca = query.padStart(2, '0');
+        const bichoPorDezena = getBichoByDezena(dezenaBusca);
+
+        if (bichoPorDezena) {
+            // Evitar duplicidade se o grupo já foi adicionado
+            if (!matches.some(m => m.grupo === bichoPorDezena.grupo)) {
+                matches.push(bichoPorDezena);
+            }
+        }
+
+        if (matches.length > 0) {
+            return matches;
         }
 
         return reply.status(404).send(null);

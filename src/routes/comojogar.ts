@@ -8,9 +8,9 @@ export async function comoJogarRoutes(app: FastifyInstance) {
     const server = app.withTypeProvider<ZodTypeProvider>();
 
     const getSection = (content: string, header: string) => {
-        const regex = new RegExp(`## ${header}([\\s\\S]*?)(?=\\n## |$)`, 'i');
+        const regex = new RegExp(`#{2,3} ${header}([\\s\\S]*?)(?=\\n#{2,3} |$)`, 'i');
         const match = content.match(regex);
-        return match ? match[header.toLowerCase() === 'tabela' ? 1 : 1].trim() : 'Seção não encontrada.';
+        return match ? match[1].trim() : 'Seção não encontrada.';
     };
 
     const readContent = async () => {

@@ -26,7 +26,7 @@ export async function resultadosRoutes(app: FastifyInstance) {
                     loterica: z.string(),
                     premios: z.array(z.object({
                         posicao: z.number().int(),
-                        milhar: z.string().length(4),
+                        milhar: z.string().min(3).max(5),
                         grupo: z.number().int(),
                         bicho: z.string(),
                     }))

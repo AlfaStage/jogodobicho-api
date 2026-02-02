@@ -31,7 +31,7 @@ async function runTests() {
     console.log(`[Bichos] Status: ${bichos.status}, Count: ${bichos.data.length}`);
 
     const bicho9 = await client.get('/v1/bichos/9');
-    console.log(`[Bicho 9] Status: ${bicho9.status}, Nome: ${bicho9.data.nome}`);
+    console.log(`[Bicho 9] Status: ${bicho9.status}, Nome: ${bicho9.data[0]?.nome || 'Não encontrado'}`);
 
     // 4. Resultados
     const resultados = await client.get('/v1/resultados');

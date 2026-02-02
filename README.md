@@ -44,31 +44,85 @@ O sistema possui um `CronService` interno que gerencia as coletas:
 - **Global:** Varredura a cada 15 minutos.
 - **Horóscopo:** Diariamente às 06:00.
 
-## 📚 Endpoints Principais
+## 📚 Endpoints da API
 
-- `GET /v1/resultados`: Consulta resultados históricos e recentes.
-- `GET /v1/lotericas`: Lista as lotéricas suportadas.
-- `GET /v1/horoscopo`: Previsões diárias por signo.
-- `GET /v1/numerologia`: Números da sorte baseados em nomes.
-- `GET /v1/webhooks`: Gerenciamento de notificações Push.
-- `GET /v1/como-jogar`: Guia e história do jogo.
+A API segue padrões REST e utiliza JSON para comunicação. Todas as chamadas (exceto `/docs` e `/health`) requerem o header `x-api-key`.
 
-## 🚀 Deploy no EasyPanel (Docker)
+### 1. Resultados (`/v1/resultados`)
+Retorna os resultados dos sorteios.
+- **Query Params:**
+  - `data`: Formato `YYYY-MM-DD` (ex: `2024-05-20`).
+  - `loterica`: Slug da banca (ex: `pt-rio`, `look-goias`, `federal`).
 
-1. Crie um **App Service**.
-2. Configure as **Environment Variables**:
-   - `API_KEY`: Sua senha de acesso.
-   - `DATABASE_PATH`: `/app/data/prod.db` (Importante para persistência).
-3. Configure um **Volume/Mount**:
-   - Mount Path: `/app/data`.
-4. O `Dockerfile` cuidará do resto (compilação e inicialização do banco).
+**Exemplo Curl:**
+```bash
+curl -X GET "http://localhost:3002/v1/resultados?loterica=pt-rio&data=2024-05-20" \
+     -H "x-api-key: SUA_CHAVE"
+```
+
+**Exemplo Resposta:**
+```json
+[
+  {
+    "id": "uuid-v4",
+    "data": "2024-05-20",
+    "horario": "11:00",
+    "loterica": "PT Rio / Deu no Poste",
+    "premios": [
+      { "posicao": 1, "milhar": "1234", "grupo": 9, "bicho": "Cobra" },
+      ...
+    ]
+  }
+]
+```
+
+### 2. Lotéricas (`/v1/lotericas`)
+Lista todas as bancas configuradas no sistema.
+
+**Exemplo Curl:**
+```bash
+curl -X GET "http://localhost:3002/v1/lotericas" \
+     -H "x-api-key: SUA_CHAVE"
+```
+
+### 3. Bichos (`/v1/bichos`)
+Consulta a tabela do Jogo do Bicho.
+- `GET /v1/bichos`: Lista todos os grupos.
+- `GET /v1/bichos/:query`: Busca por número do grupo ou dezena.
+
+**Exemplo Curl (Busca por dezena 34):**
+```bash
+curl -X GET "http://localhost:3002/v1/bichos/34" \
+     -H "x-api-key: SUA_CHAVE"
+```
+
+### 4. Horóscopo (`/v1/horoscopo`)
+Previsões diárias com números da sorte sugeridos.
+- **Query Param:** `data` (opcional).
+
+**Exemplo Curl:**
+```bash
+curl -X GET "http://localhost:3002/v1/horoscopo?data=2024-05-20" \
+     -H "x-api-key: SUA_CHAVE"
+```
+
+### 5. Numerologia (`/v1/numerologia`)
+Calcula o número da sorte baseado no nome (Tabela Pitagórica).
+- **Query Param:** `nome` (obrigatório).
+
+**Exemplo Curl:**
+```bash
+curl -X GET "http://localhost:3002/v1/numerologia?nome=Antigravity" \
+     -H "x-api-key: SUA_CHAVE"
+```
 
 ---
 
 ## 🏗️ Estrutura do Projeto
 
 - `src/server.ts`: Ponto de entrada (Fastify + MCP + Cron).
+- `src/config/loterias.ts`: Registro central de bancas e horários.
 - `src/mcp`: Lógica do servidor Model Context Protocol.
-- `src/scrapers`: Motores de raspagem de dados reais.
-- `src/services`: Serviços de Webhooks, Cron e Numerologia.
+- `src/scrapers`: Motores de raspagem (Global, GigaBicho, ResultadoFácil).
+- `src/services`: Webhooks, Cron, ScraperService e Numerologia.
 - `src/db.ts`: Conexão SQLite (Better-SQLite3).

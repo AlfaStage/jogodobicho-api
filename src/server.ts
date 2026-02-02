@@ -2,7 +2,7 @@ import fastify from 'fastify';
 import cors from '@fastify/cors';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
-import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
+import { jsonSchemaTransform, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { resultadosRoutes } from './routes/resultados.js';
 import { lotericasRoutes } from './routes/lotericas.js';
 import { bichosRoutes } from './routes/bichos.js';
@@ -34,6 +34,7 @@ app.register(swagger, {
         },
         security: [{ apiKey: [] }],
     },
+    transform: jsonSchemaTransform,
 });
 
 app.register(swaggerUi, {

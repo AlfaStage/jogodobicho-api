@@ -21,8 +21,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --production
 
-# Copiar build (contém o init-db.js compilado)
+# Copiar build e arquivos de dados
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src/data ./src/data
 
 # Expor porta da API
 EXPOSE 3002

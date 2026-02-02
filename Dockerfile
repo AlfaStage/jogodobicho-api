@@ -24,11 +24,11 @@ RUN npm install --production
 # Copiar build (contém o init-db.js compilado)
 COPY --from=builder /app/dist ./dist
 
-# Expor portas (API e SSE)
-EXPOSE 3334 3001
+# Expor porta unificada (API + MCP SSE)
+EXPOSE 3000
 
 # Variáveis de ambiente default
-ENV PORT=3334
+ENV PORT=3000
 ENV NODE_ENV=production
 
 # Comando de entrada

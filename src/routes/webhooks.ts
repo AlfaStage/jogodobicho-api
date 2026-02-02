@@ -10,12 +10,13 @@ export async function webhooksRoutes(app: FastifyInstance) {
     server.post('/', {
         schema: {
             summary: 'Registrar Webhook',
+            description: 'Registra um novo URL para receber notificações de novos resultados em tempo real.',
             tags: ['Webhooks'],
             body: z.object({
-                url: z.string().url()
+                url: z.string().url().describe('URL de destino do POST (ex: n8n webhook)')
             }),
             response: {
-                201: z.object({ message: z.string() })
+                201: z.object({ message: z.string() }).describe('Sucesso no registro')
             }
         }
     }, async (req, reply) => {
@@ -27,13 +28,14 @@ export async function webhooksRoutes(app: FastifyInstance) {
     server.get('/', {
         schema: {
             summary: 'Listar Webhooks',
+            description: 'Lista todos os webhooks registrados no sistema.',
             tags: ['Webhooks'],
             response: {
                 200: z.array(z.object({
-                    id: z.string(),
-                    url: z.string(),
-                    created_at: z.string()
-                }))
+                    id: z.string().uuid().describe('ID único do webhook'),
+                    url: z.string().url().describe('URL registrada'),
+                    created_at: z.string().describe('Data de criação')
+                })).describe('Lista de webhooks')
             }
         }
     }, async () => {
@@ -43,12 +45,13 @@ export async function webhooksRoutes(app: FastifyInstance) {
     server.delete('/:id', {
         schema: {
             summary: 'Remover Webhook',
+            description: 'Remove um webhook do sistema pelo seu ID.',
             tags: ['Webhooks'],
             params: z.object({
-                id: z.string()
+                id: z.string().uuid().describe('ID do webhook a remover')
             }),
             response: {
-                204: z.null()
+                204: z.null().describe('Webhook removido com sucesso')
             }
         }
     }, async (req, reply) => {

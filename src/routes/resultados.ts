@@ -10,24 +10,25 @@ export async function resultadosRoutes(app: FastifyInstance) {
     server.get('/', {
         schema: {
             summary: 'Listar Resultados',
+            description: 'Retorna uma lista dos últimos resultados filtrados por data ou lotérica.',
             tags: ['Resultados'],
             querystring: z.object({
-                data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato YYYY-MM-DD").optional(),
-                loterica: z.string().optional(),
+                data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato YYYY-MM-DD").optional().describe('Filtra por data (ex: 2024-05-20)'),
+                loterica: z.string().optional().describe('Filtra por slug da lotérica (ex: pt-rio)'),
             }),
             response: {
                 200: z.array(z.object({
-                    id: z.string(),
+                    id: z.string().uuid(),
                     data: z.string(),
                     horario: z.string(),
                     loterica: z.string(),
                     premios: z.array(z.object({
-                        posicao: z.number(),
-                        milhar: z.string(),
-                        grupo: z.number(),
+                        posicao: z.number().int(),
+                        milhar: z.string().length(4),
+                        grupo: z.number().int(),
                         bicho: z.string(),
                     }))
-                }))
+                })).describe('Lista de resultados encontrados')
             }
         }
     }, async (request, reply) => {

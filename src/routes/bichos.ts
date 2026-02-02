@@ -9,12 +9,13 @@ export async function bichosRoutes(app: FastifyInstance) {
     server.get('/', {
         schema: {
             summary: 'Listar Bichos',
+            description: 'Retorna a tabela completa de bichos (grupos de 1 a 25).',
             tags: ['Bichos'],
             response: {
                 200: z.array(z.object({
-                    grupo: z.number(),
-                    nome: z.string(),
-                    dezenas: z.array(z.string()),
+                    grupo: z.number().describe('Número do grupo (1-25)'),
+                    nome: z.string().describe('Nome do bicho'),
+                    dezenas: z.array(z.string()).describe('Lista de dezenas associadas'),
                 }))
             }
         }
@@ -25,17 +26,18 @@ export async function bichosRoutes(app: FastifyInstance) {
     server.get('/:query', {
         schema: {
             summary: 'Buscar Bicho por Grupo ou Dezena',
+            description: 'Busca um bicho específico. A query pode ser o número do grupo (ex: 9) ou uma dezena (ex: 34).',
             tags: ['Bichos'],
             params: z.object({
-                query: z.string()
+                query: z.string().describe('Número do grupo ou dezena')
             }),
             response: {
                 200: z.object({
                     grupo: z.number(),
                     nome: z.string(),
                     dezenas: z.array(z.string()),
-                }).optional(),
-                404: z.null().optional()
+                }).describe('Dados do bicho encontrado').optional(),
+                404: z.null().describe('Bicho não encontrado').optional()
             }
         }
     }, async (req, reply) => {

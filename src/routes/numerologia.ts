@@ -10,19 +10,20 @@ export async function numerologiaRoutes(app: FastifyInstance) {
     server.get('/', {
         schema: {
             summary: 'Calcular Numerologia',
+            description: 'Calcula o número da sorte baseado no nome fornecido utilizando a tabela Pitagórica.',
             tags: ['Numerologia'],
             querystring: z.object({
-                nome: z.string().min(1)
+                nome: z.string().min(1).describe('Nome para calcular a numerologia')
             }),
             response: {
                 200: z.object({
-                    input: z.string(),
-                    cleanInput: z.string(),
-                    sum: z.number(),
-                    luckyNumber: z.number(),
-                    details: z.string(),
-                    meaning: z.string()
-                })
+                    input: z.string().describe('Nome original enviado'),
+                    cleanInput: z.string().describe('Nome normalizado'),
+                    sum: z.number().describe('Soma total dos valores'),
+                    luckyNumber: z.number().describe('Número da sorte reduzido (1-9)'),
+                    details: z.string().describe('Detalhes do cálculo'),
+                    meaning: z.string().describe('Significado do número')
+                }).describe('Resultado detalhado da numerologia')
             }
         }
     }, async (req, reply) => {

@@ -9,8 +9,6 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "mcp": "tsx src/mcp/server.ts",
-    "mcp:sse": "tsx src/mcp/server-sse.ts",
     "build": "tsc"
   },
   "keywords": [],

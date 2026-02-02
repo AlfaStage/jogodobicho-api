@@ -9,14 +9,15 @@ export async function horoscopoRoutes(app: FastifyInstance) {
     server.get('/', {
         schema: {
             summary: 'Horóscopo do Dia',
+            description: 'Retorna as previsões do horóscopo para todos os signos na data atual.',
             tags: ['Horóscopo'],
             response: {
                 200: z.array(z.object({
-                    signo: z.string(),
-                    texto: z.string().nullable(),
-                    numeros: z.string().nullable(),
-                    data: z.string()
-                }))
+                    signo: z.string().describe('Nome do signo'),
+                    texto: z.string().nullable().describe('Texto da previsão'),
+                    numeros: z.string().nullable().describe('Números da sorte sugeridos'),
+                    data: z.string().describe('Data da previsão (YYYY-MM-DD)')
+                })).describe('Lista de previsões por signo')
             }
         }
     }, async () => {

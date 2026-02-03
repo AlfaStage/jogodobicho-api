@@ -1,5 +1,6 @@
 import { ScraperBase } from './ScraperBase.js';
 import db from '../db.js';
+import { LotericaConfig } from '../config/loterias.js';
 
 const SIGNOS = [
     { nome: 'Áries', slug: 'aries', url: 'https://www.ojogodobicho.com/aries.htm' },
@@ -21,7 +22,7 @@ export class HoroscopoScraper extends ScraperBase {
         super('https://www.ojogodobicho.com/');
     }
 
-    async execute(): Promise<void> {
+    async execute(targets?: LotericaConfig[], targetSlug?: string): Promise<void> {
         console.log('[HoroscopoScraper] Iniciando varredura de horóscopo...');
         const today = new Date().toISOString().split('T')[0];
 

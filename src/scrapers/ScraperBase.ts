@@ -1,5 +1,6 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import { LotericaConfig } from '../config/loterias.js';
 // Removed Prisma types
 
 export abstract class ScraperBase {
@@ -24,5 +25,5 @@ export abstract class ScraperBase {
         }
     }
 
-    abstract execute(): Promise<void>;
+    abstract execute(targets?: LotericaConfig[], targetSlug?: string): Promise<void>;
 }

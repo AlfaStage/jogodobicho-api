@@ -11,7 +11,7 @@ export class GlobalScraper extends ScraperBase {
         super('https://www.ojogodobicho.com/resultados.htm');
     }
 
-    async execute(targets: LotericaConfig[] = LOTERIAS): Promise<void> {
+    async execute(targets: LotericaConfig[] = LOTERIAS, targetSlug?: string): Promise<void> {
         console.log(`[GlobalScraper] Iniciando varredura global (${targets.length} alvos)...`);
 
         // Filtrar apenas lotéricas alvo que têm URL definida

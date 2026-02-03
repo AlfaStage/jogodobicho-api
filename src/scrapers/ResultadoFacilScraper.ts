@@ -2,7 +2,7 @@ import { ScraperBase } from './ScraperBase.js';
 import db from '../db.js';
 import { randomUUID } from 'crypto';
 import { WebhookService } from '../services/WebhookService.js';
-import { LOTERIAS } from '../config/loterias.js';
+import { LOTERIAS, LotericaConfig } from '../config/loterias.js';
 
 export class ResultadoFacilScraper extends ScraperBase {
     private webhookService = new WebhookService();
@@ -11,7 +11,7 @@ export class ResultadoFacilScraper extends ScraperBase {
         super('https://www.resultadofacil.com.br/');
     }
 
-    async execute(targetSlug?: string): Promise<void> {
+    async execute(targets: LotericaConfig[] = LOTERIAS, targetSlug?: string): Promise<void> {
         console.log('[ResultadoFacilScraper] Iniciando varredura...');
 
         let loteriasAlvo = LOTERIAS.filter(l => l.urlResultadoFacil);

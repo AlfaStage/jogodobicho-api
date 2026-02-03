@@ -1,6 +1,8 @@
 import { FastifyInstance } from 'fastify';
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { isJSONRPCRequest } from "@modelcontextprotocol/sdk/types.js";
 import {
     CallToolRequestSchema,
     ListToolsRequestSchema,
@@ -343,10 +345,9 @@ export async function registerMcpRoutes(app: FastifyInstance) {
 
     // Endpoint SSE com suporte a CORS e keep-alive
     app.get("/sse", async (req, reply) => {
-        const sessionId = crypto.randomUUID();
         const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
         
-        console.log(`[MCP] 🟢 Nova conexão SSE: ${sessionId} | IP: ${clientIp}`);
+        console.log(`[MCP] 🟢 Nova conexão SSE solicitada | IP: ${clientIp}`);
         console.log(`[MCP] Headers:`, {
             origin: req.headers.origin,
             'user-agent': req.headers['user-agent']?.slice(0, 50),
@@ -368,7 +369,12 @@ export async function registerMcpRoutes(app: FastifyInstance) {
         reply.raw.setHeader('X-Content-Type-Options', 'nosniff');
         reply.raw.statusCode = 200;
 
-        const transport = new SSEServerTransport(`/messages?sessionId=${sessionId}`, reply.raw);
+        // Criar transport SEM sessionId na URL - o SDK gera automaticamente
+        const transport = new SSEServerTransport("/messages", reply.raw);
+        
+        // O SDK gera o sessionId internamente e expõe via transport.sessionId
+        const sessionId = transport.sessionId;
+        console.log(`[MCP] 📋 Session ID gerado pelo SDK: ${sessionId}`);
         
         // Keep-alive a cada 30 segundos para manter conexão aberta (n8n, proxies)
         const keepAliveInterval = setInterval(() => {
@@ -657,7 +663,177 @@ export async function registerMcpRoutes(app: FastifyInstance) {
         reply.code(204).send();
     });
 
+    // ==========================================
+    // ENDPOINT /mcp - HTTP STREAMABLE TRANSPORT
+    // ==========================================
+    // Este endpoint suporta o transporte HTTP Streamable moderno do MCP
+    // Aceita: GET (upgrade para SSE) ou POST (HTTP Streamable direto)
+    
+    let httpTransport: StreamableHTTPServerTransport | null = null;
+
+    // Negociação de transporte no /mcp
+    app.get("/mcp", async (req, reply) => {
+        const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+        console.log(`[MCP Streamable] 🟢 Requisição GET /mcp de ${clientIp}`);
+        
+        // Headers CORS
+        const origin = req.headers.origin || '*';
+        reply.raw.setHeader('Access-Control-Allow-Origin', origin);
+        reply.raw.setHeader('Access-Control-Allow-Credentials', 'true');
+        
+        // Headers SSE
+        reply.raw.setHeader('Content-Type', 'text/event-stream');
+        reply.raw.setHeader('Cache-Control', 'no-cache');
+        reply.raw.setHeader('Connection', 'keep-alive');
+        reply.raw.statusCode = 200;
+
+        // Criar transporte SSE (fallback para clientes que não suportam HTTP Streamable)
+        const sessionId = crypto.randomUUID();
+        const transport = new SSEServerTransport("/mcp/messages", reply.raw);
+        const actualSessionId = transport.sessionId;
+        
+        console.log(`[MCP Streamable] Session SSE: ${actualSessionId}`);
+        
+        const keepAliveInterval = setInterval(() => {
+            try {
+                if (reply.raw.writable && !reply.raw.writableEnded) {
+                    reply.raw.write(':ping\n\n');
+                }
+            } catch (err) {
+                clearInterval(keepAliveInterval);
+                sessions.delete(actualSessionId);
+            }
+        }, 30000);
+        
+        sessions.set(actualSessionId, { transport, keepAliveInterval });
+
+        try {
+            await server.connect(transport);
+            console.log(`[MCP Streamable] ✅ Conectado: ${actualSessionId}`);
+        } catch (err: any) {
+            console.error(`[MCP Streamable] ❌ Erro:`, err.message);
+            clearInterval(keepAliveInterval);
+            sessions.delete(actualSessionId);
+            return reply.code(500).send('Connection failed');
+        }
+
+        reply.raw.on('close', () => {
+            console.log(`[MCP Streamable] 🔴 Fechado: ${actualSessionId}`);
+            const session = sessions.get(actualSessionId);
+            if (session?.keepAliveInterval) clearInterval(session.keepAliveInterval);
+            sessions.delete(actualSessionId);
+        });
+    });
+
+    // HTTP Streamable POST - Modo stateless moderno
+    app.post("/mcp", async (req, reply) => {
+        console.log(`[MCP Streamable] 📨 POST /mcp recebido`);
+        console.log(`[MCP Streamable] Headers:`, req.headers);
+        
+        // Headers CORS
+        const origin = req.headers.origin || '*';
+        reply.header('Access-Control-Allow-Origin', origin);
+        reply.header('Access-Control-Allow-Credentials', 'true');
+        
+        try {
+            // Verificar se é uma requisição JSON-RPC válida
+            const body = req.body;
+            
+            if (!body || !isJSONRPCRequest(body)) {
+                console.log(`[MCP Streamable] ⚠️ Body inválido:`, body);
+                return reply.code(400).send({
+                    jsonrpc: "2.0",
+                    error: { code: -32600, message: "Invalid JSON-RPC request" },
+                    id: null
+                });
+            }
+
+            console.log(`[MCP Streamable] JSON-RPC Request:`, JSON.stringify(body, null, 2));
+
+            // Se ainda não temos transporte HTTP, criar
+            if (!httpTransport) {
+                console.log(`[MCP Streamable] 🆕 Criando novo transporte HTTP Streamable`);
+                httpTransport = new StreamableHTTPServerTransport({
+                    sessionIdGenerator: undefined // Stateless mode
+                });
+                await server.connect(httpTransport);
+            }
+
+            // Processar a requisição
+            await httpTransport.handleRequest(req.raw, reply.raw, req.body);
+            console.log(`[MCP Streamable] ✅ Requisição processada`);
+            
+        } catch (error: any) {
+            console.error(`[MCP Streamable] ❌ Erro:`, error.message);
+            if (!reply.raw.headersSent) {
+                reply.code(500).send({
+                    jsonrpc: "2.0",
+                    error: { code: -32603, message: error.message },
+                    id: null
+                });
+            }
+        }
+    });
+
+    // DELETE para limpar sessão (quando usar sessions)
+    app.delete("/mcp", async (req, reply) => {
+        console.log(`[MCP Streamable] 🗑️ DELETE /mcp - Limpando recursos`);
+        if (httpTransport) {
+            await server.close();
+            httpTransport = null;
+        }
+        reply.code(200).send({ status: "cleaned" });
+    });
+
+    // CORS preflight para /mcp
+    app.options("/mcp", async (req, reply) => {
+        reply.header('Access-Control-Allow-Origin', '*');
+        reply.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+        reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, Accept');
+        reply.header('Access-Control-Allow-Credentials', 'true');
+        reply.header('Access-Control-Max-Age', '86400');
+        reply.code(204).send();
+    });
+
+    // Mensagens para sessões SSE do /mcp
+    app.post("/mcp/messages", async (req, reply) => {
+        const sessionId = (req.query as any).sessionId;
+        const session = sessions.get(sessionId);
+        
+        console.log(`[MCP Streamable] 📨 POST /mcp/messages - Session: ${sessionId?.slice(0, 8)}...`);
+
+        if (!session) {
+            console.warn(`[MCP Streamable] ⚠️ Sessão não encontrada: ${sessionId}`);
+            return reply.code(404).send({ 
+                error: "Session not found",
+                message: "Session expired or invalid"
+            });
+        }
+
+        const origin = req.headers.origin || '*';
+        reply.header('Access-Control-Allow-Origin', origin);
+        reply.header('Access-Control-Allow-Credentials', 'true');
+
+        try {
+            await session.transport.handlePostMessage(req.raw, reply.raw);
+            console.log(`[MCP Streamable] ✅ Mensagem processada`);
+        } catch (err: any) {
+            console.error(`[MCP Streamable] ❌ Erro:`, err.message);
+            if (!reply.raw.headersSent) {
+                reply.code(500).send({ error: "Internal error", message: err.message });
+            }
+        }
+    });
+
+    app.options("/mcp/messages", async (req, reply) => {
+        reply.header('Access-Control-Allow-Origin', '*');
+        reply.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
+        reply.code(204).send();
+    });
+
     console.log('[MCP] ✅ Servidor MCP inicializado com sucesso');
-    console.log('[MCP] Endpoints SSE: GET /sse, POST /messages');
-    console.log('[MCP] Endpoints HTTP: GET /mcp/health, GET /mcp/tools, POST /mcp/execute');
+    console.log('[MCP] Endpoints SSE Legacy: GET /sse, POST /messages');
+    console.log('[MCP] Endpoints HTTP Streamable: GET/POST/DELETE /mcp, POST /mcp/messages');
+    console.log('[MCP] Endpoints HTTP Auxiliares: GET /mcp/health, GET /mcp/tools, POST /mcp/execute');
 }

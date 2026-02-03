@@ -78,7 +78,7 @@ app.addHook('onRequest', async (request, reply) => {
         request.url.startsWith('/public') || // Arquivos estáticos
         request.url.startsWith('/sse') || // MCP SSE
         request.url.startsWith('/messages') || // MCP Messages
-        request.url.startsWith('/mcp/') || // MCP HTTP endpoints (health, tools, execute)
+        request.url.startsWith('/mcp') || // MCP HTTP endpoints (health, tools, execute, streamable)
         request.url === '/favicon.ico'
     ) return;
 

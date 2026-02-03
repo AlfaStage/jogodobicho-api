@@ -10,13 +10,18 @@ export class CronService {
     private horoscopo = new HoroscopoScraper();
     private content = new ContentScraper();
     private jobs: CronJob[] = [];
+    private isStarted = false;
 
     constructor() {
-        console.log('[CronService] Inicializando...');
-        this.start();
+        console.log('[CronService] Instância criada. Aguardando start()...');
     }
 
     start() {
+        if (this.isStarted) {
+            console.log('[CronService] Já está rodando, ignorando chamada duplicada');
+            return;
+        }
+        this.isStarted = true;
         // 1. Smart Scraper Loop (A cada 2 minutos)
         // Substitui varreduras fixas e fallback.
         // Verifica o que está pendente e busca apenas o necessário.

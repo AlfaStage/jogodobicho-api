@@ -58,4 +58,5 @@ for (const loteria of LOTERIAS) {
 console.log(`Lotericas verificadas: ${LOTERIAS.length}`);
 
 console.log('Banco de dados inicializado com sucesso!');
-db.close();
+// NOTA: Não fechamos a conexão aqui pois ela é compartilhada com a aplicação
+// A conexão será gerenciada pelo ciclo de vida da aplicação

@@ -2,12 +2,21 @@ import fastify from 'fastify';
 import cors from '@fastify/cors';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
+import fastifyStatic from '@fastify/static';
 import { jsonSchemaTransform, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { resultadosRoutes } from './routes/resultados.js';
 import { lotericasRoutes } from './routes/lotericas.js';
 import { bichosRoutes } from './routes/bichos.js';
 import { horoscopoRoutes } from './routes/horoscopo.js';
 import { comoJogarRoutes } from './routes/comojogar.js';
+import { numerologiaRoutes } from './routes/numerologia.js';
+import { webhooksRoutes } from './routes/webhooks.js';
+import { adminRoutes } from './routes/admin.js';
+import { registerMcpRoutes } from './mcp/fastify-mcp.js';
+import { CronService } from './services/CronService.js';
+import { StartupSyncService } from './services/StartupSyncService.js';
+import fs from 'fs';
+import path from 'path';
 
 const app = fastify({
     logger: true,
@@ -15,7 +24,6 @@ const app = fastify({
 });
 
 // Registrar plugin de arquivos estáticos
-import fastifyStatic from '@fastify/static';
 app.register(fastifyStatic, {
     root: path.resolve('public'),
     prefix: '/public/', // Opcional: prefixo para URL
@@ -82,17 +90,8 @@ app.addHook('onRequest', async (request, reply) => {
     }
 });
 
-// Registrar rotas
-import { numerologiaRoutes } from './routes/numerologia.js';
-import { webhooksRoutes } from './routes/webhooks.js';
-import { adminRoutes } from './routes/admin.js';
-import { registerMcpRoutes } from './mcp/fastify-mcp.js';
-import { CronService } from './services/CronService.js';
-import { StartupSyncService } from './services/StartupSyncService.js';
-import fs from 'fs';
-import path from 'path';
-
-app.register(registerMcpRoutes); // Unificado
+// Registrar rotas MCP
+app.register(registerMcpRoutes);
 app.register(resultadosRoutes, { prefix: '/v1/resultados' });
 app.register(lotericasRoutes, { prefix: '/v1/lotericas' });
 app.register(bichosRoutes, { prefix: '/v1/bichos' });
@@ -124,14 +123,18 @@ app.get('/css/:file', async (req, reply) => {
     }
 });
 
+let cronService: CronService | null = null;
+
 const start = async () => {
     try {
         const port = process.env.PORT ? parseInt(process.env.PORT) : 3002;
         await app.listen({ port, host: '0.0.0.0' });
 
-        // Iniciar Cron
-        const cron = new CronService();
-        cron.start();
+        // Iniciar Cron Service (apenas uma vez)
+        if (!cronService) {
+            cronService = new CronService();
+            console.log('[Server] CronService inicializado');
+        }
 
         // Sincronização Inicial (não bloqueante)
         const syncService = new StartupSyncService();

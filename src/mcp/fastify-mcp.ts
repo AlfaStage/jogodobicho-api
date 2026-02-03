@@ -12,7 +12,35 @@ import { WebhookService } from "../services/WebhookService.js";
 import fs from "fs/promises";
 import path from "path";
 
+// Cache para conteúdo do arquivo historia.md
+let historiaCache: string | null = null;
+let historiaCacheTime: number = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+async function getHistoriaContent(): Promise<string> {
+    const now = Date.now();
+    if (historiaCache && (now - historiaCacheTime) < CACHE_TTL) {
+        return historiaCache;
+    }
+    
+    try {
+        const filePath = path.resolve('src/data/historia.md');
+        const content = await fs.readFile(filePath, 'utf-8');
+        historiaCache = content;
+        historiaCacheTime = now;
+        return content;
+    } catch (error: any) {
+        console.error('[MCP] Erro ao ler historia.md:', error.message);
+        return `# Guia do Jogo do Bicho
+
+## Sobre
+O arquivo de história não está disponível no momento, mas você pode consultar as outras ferramentas MCP para informações sobre o jogo.`;
+    }
+}
+
 export async function registerMcpRoutes(app: FastifyInstance) {
+    console.log('[MCP] Inicializando servidor MCP...');
+    
     const server = new Server(
         {
             name: "jogodobicho-mcp",
@@ -26,6 +54,9 @@ export async function registerMcpRoutes(app: FastifyInstance) {
     );
 
     const numerologyService = new NumerologyService();
+    const webhookService = new WebhookService();
+    const sessions = new Map<string, { transport: SSEServerTransport; keepAliveInterval?: NodeJS.Timeout }>();
+    const crypto = await import('node:crypto');
 
     server.setRequestHandler(ListToolsRequestSchema, async () => {
         return {
@@ -37,7 +68,7 @@ export async function registerMcpRoutes(app: FastifyInstance) {
                         type: "object",
                         properties: {
                             data: { type: "string", description: "Data no formato YYYY-MM-DD" },
-                            loterica: { type: "string", description: "Slug da lotérica" }
+                            loterica: { type: "string", description: "Slug da lotérica (ex: pt-rio, federal, look-goias)" }
                         }
                     }
                 },
@@ -53,11 +84,11 @@ export async function registerMcpRoutes(app: FastifyInstance) {
                 },
                 {
                     name: "buscar_bicho",
-                    description: "Busca informações de um bicho pelo grupo ou dezena",
+                    description: "Busca informações de um bicho pelo grupo (1-25) ou dezena (00-99)",
                     inputSchema: {
                         type: "object",
                         properties: {
-                            query: { type: "string", description: "Grupo (ex: 1) ou Dezena (ex: 01)" }
+                            query: { type: "string", description: "Grupo (ex: 1) ou Dezena (ex: 01, 12)" }
                         },
                         required: ["query"]
                     }
@@ -71,29 +102,29 @@ export async function registerMcpRoutes(app: FastifyInstance) {
                             secao: {
                                 type: "string",
                                 enum: ["regras", "tabela", "modalidades", "historia", "dicas"],
-                                description: "Seção específica para ler"
+                                description: "Seção específica para ler (opcional)"
                             }
                         }
                     }
                 },
                 {
                     name: "calcular_numerologia",
-                    description: "Calcula os números da sorte para um nome",
+                    description: "Calcula os números da sorte baseados no nome usando numerologia cabalistica",
                     inputSchema: {
                         type: "object",
                         properties: {
-                            nome: { type: "string", description: "Nome para calcular" }
+                            nome: { type: "string", description: "Nome completo para calcular os números da sorte" }
                         },
                         required: ["nome"]
                     }
                 },
                 {
                     name: "horoscopo_dia",
-                    description: "Retorna o horóscopo do dia para um signo",
+                    description: "Retorna o horóscopo do dia com números da sorte para cada signo",
                     inputSchema: {
                         type: "object",
                         properties: {
-                            signo: { type: "string", description: "Nome do signo" }
+                            signo: { type: "string", description: "Nome do signo (ex: Áries, Touro, etc). Deixe vazio para todos." }
                         }
                     }
                 },
@@ -104,11 +135,11 @@ export async function registerMcpRoutes(app: FastifyInstance) {
                 },
                 {
                     name: "criar_webhook",
-                    description: "Registra um novo webhook para receber resultados",
+                    description: "Registra um novo webhook para receber resultados automaticamente",
                     inputSchema: {
                         type: "object",
                         properties: {
-                            url: { type: "string", description: "URL do webhook (POST)" }
+                            url: { type: "string", description: "URL do webhook que receberá POST com os resultados" }
                         },
                         required: ["url"]
                     }
@@ -119,7 +150,7 @@ export async function registerMcpRoutes(app: FastifyInstance) {
                     inputSchema: {
                         type: "object",
                         properties: {
-                            id: { type: "string", description: "UUID do webhook" }
+                            id: { type: "string", description: "UUID do webhook a ser removido" }
                         },
                         required: ["id"]
                     }
@@ -128,27 +159,45 @@ export async function registerMcpRoutes(app: FastifyInstance) {
         };
     });
 
-    const webhookService = new WebhookService();
-
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { name, arguments: args } = request.params;
+        const startTime = Date.now();
+        
+        console.log(`[MCP] Executando tool: ${name}`, args ? JSON.stringify(args) : '');
 
         try {
             if (name === "listar_resultados") {
-                const qs = `
+                const data = args?.data as string | undefined;
+                const loterica = args?.loterica as string | undefined;
+                
+                let qs = `
                 SELECT r.data, r.horario, r.loterica_slug, 
-                       json_group_array(json_object('posicao', p.posicao, 'bicho', p.bicho, 'milhar', p.milhar)) as premios
+                       json_group_array(json_object('posicao', p.posicao, 'bicho', p.bicho, 'milhar', p.milhar, 'grupo', p.grupo)) as premios
                 FROM resultados r
                 JOIN premios p ON r.id = p.resultado_id
-                GROUP BY r.id
-                ORDER BY r.data DESC, r.horario DESC LIMIT 5
+                WHERE 1=1
                 `;
-                const res = db.prepare(qs).all();
+                const params: any[] = [];
+                
+                if (data) {
+                    qs += ' AND r.data = ?';
+                    params.push(data);
+                }
+                if (loterica) {
+                    qs += ' AND r.loterica_slug = ?';
+                    params.push(loterica);
+                }
+                
+                qs += ' GROUP BY r.id ORDER BY r.data DESC, r.horario DESC LIMIT 10';
+                
+                const res = db.prepare(qs).all(...params);
+                const duration = Date.now() - startTime;
+                console.log(`[MCP] listar_resultados: ${res.length} resultados em ${duration}ms`);
                 return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }] };
             }
 
             if (name === "listar_lotericas") {
-                const res = db.prepare('SELECT slug, nome FROM lotericas').all();
+                const res = db.prepare('SELECT slug, nome FROM lotericas ORDER BY nome').all();
                 return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }] };
             }
 
@@ -158,16 +207,31 @@ export async function registerMcpRoutes(app: FastifyInstance) {
 
             if (name === "buscar_bicho") {
                 const q = args?.query as string;
-                if (!q) throw new Error("Query is required");
+                if (!q) throw new Error("Parâmetro 'query' é obrigatório");
+                
                 const g = parseInt(q);
-                const b = (!isNaN(g) && g > 0 && g <= 25) ? getBichoByGrupo(g) : getBichoByDezena(q);
-                return { content: [{ type: "text", text: JSON.stringify(b || { error: "Não encontrado" }, null, 2) }] };
+                let b: { grupo: number; nome: string; dezenas: string[] } | undefined;
+                
+                if (!isNaN(g) && g >= 1 && g <= 25) {
+                    b = getBichoByGrupo(g);
+                } else {
+                    // Tenta como dezena (00-99)
+                    b = getBichoByDezena(q.padStart(2, '0'));
+                }
+                
+                if (!b) {
+                    return { 
+                        content: [{ type: "text", text: JSON.stringify({ error: "Bicho não encontrado. Use grupo (1-25) ou dezena (00-99)" }, null, 2) }],
+                        isError: true 
+                    };
+                }
+                
+                return { content: [{ type: "text", text: JSON.stringify(b, null, 2) }] };
             }
 
             if (name === "como_jogar") {
-                const secao = args?.secao as string;
-                const filePath = path.resolve('src/data/historia.md');
-                const content = await fs.readFile(filePath, 'utf-8');
+                const secao = args?.secao as string | undefined;
+                const content = await getHistoriaContent();
 
                 if (!secao) {
                     return { content: [{ type: "text", text: content }] };
@@ -182,22 +246,35 @@ export async function registerMcpRoutes(app: FastifyInstance) {
                 };
 
                 const header = headers[secao];
+                if (!header) {
+                    return { 
+                        content: [{ type: "text", text: `Seção '${secao}' não encontrada. Seções disponíveis: ${Object.keys(headers).join(', ')}` }],
+                        isError: true 
+                    };
+                }
+
                 const regex = new RegExp(`#{2,3} ${header}([\\s\\S]*?)(?=\\n#{2,3} |$)`, 'i');
                 const match = content.match(regex);
-                const sectionContent = match ? match[1].trim() : 'Seção não encontrada.';
+                const sectionContent = match ? match[1].trim() : `Seção '${secao}' não encontrada no guia.`;
 
                 return { content: [{ type: "text", text: sectionContent }] };
             }
 
             if (name === "calcular_numerologia") {
                 const nome = args?.nome as string;
+                if (!nome || nome.trim().length === 0) {
+                    return { 
+                        content: [{ type: "text", text: "Erro: Nome não pode estar vazio" }],
+                        isError: true 
+                    };
+                }
                 const res = numerologyService.calculate(nome);
                 return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }] };
             }
 
             if (name === "horoscopo_dia") {
                 const today = new Date().toISOString().split('T')[0];
-                const signo = args?.signo as string;
+                const signo = args?.signo as string | undefined;
                 let query = 'SELECT signo, texto, numeros, data FROM horoscopo_diario WHERE data = ?';
                 const params: any[] = [today];
 
@@ -205,67 +282,194 @@ export async function registerMcpRoutes(app: FastifyInstance) {
                     query += ' AND signo LIKE ?';
                     params.push(`%${signo}%`);
                 }
+                query += ' ORDER BY signo';
 
                 const res = db.prepare(query).all(...params);
+                if (res.length === 0) {
+                    return { 
+                        content: [{ type: "text", text: JSON.stringify({ 
+                            message: "Horóscopo não disponível para hoje ainda",
+                            data: today,
+                            signo: signo || 'todos'
+                        }, null, 2) }] 
+                    };
+                }
                 return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }] };
             }
 
             if (name === "listar_webhooks") {
-                const res = await webhookService.list();
+                const res = webhookService.list();
                 return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }] };
             }
 
             if (name === "criar_webhook") {
                 const url = args?.url as string;
-                await webhookService.register(url);
-                return { content: [{ type: "text", text: "Webhook registrado com sucesso" }] };
+                if (!url || !url.startsWith('http')) {
+                    return { 
+                        content: [{ type: "text", text: "Erro: URL inválida. Deve começar com http:// ou https://" }],
+                        isError: true 
+                    };
+                }
+                webhookService.register(url);
+                return { content: [{ type: "text", text: `✅ Webhook registrado com sucesso: ${url}` }] };
             }
 
             if (name === "deletar_webhook") {
                 const id = args?.id as string;
-                await webhookService.delete(id);
-                return { content: [{ type: "text", text: "Webhook removido com sucesso" }] };
+                if (!id) {
+                    return { 
+                        content: [{ type: "text", text: "Erro: ID do webhook é obrigatório" }],
+                        isError: true 
+                    };
+                }
+                webhookService.delete(id);
+                return { content: [{ type: "text", text: "✅ Webhook removido com sucesso" }] };
             }
 
+            console.warn(`[MCP] Tool não implementada: ${name}`);
             return {
-                content: [{ type: "text", text: `Tool ${name} not implemented` }],
+                content: [{ type: "text", text: `Tool '${name}' não implementada` }],
                 isError: true,
             };
         } catch (error: any) {
+            const duration = Date.now() - startTime;
+            console.error(`[MCP] Erro na tool ${name} (${duration}ms):`, error.message);
             return {
-                content: [{ type: "text", text: `Error: ${error.message}` }],
+                content: [{ type: "text", text: `❌ Erro: ${error.message}` }],
                 isError: true,
             };
         }
     });
 
-    const sessions = new Map<string, SSEServerTransport>();
-    const crypto = await import('node:crypto');
-
+    // Endpoint SSE com suporte a CORS e keep-alive
     app.get("/sse", async (req, reply) => {
         const sessionId = crypto.randomUUID();
-        console.log(`[MCP] Nova conexão SSE aberta: ${sessionId}`);
+        const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+        
+        console.log(`[MCP] 🟢 Nova conexão SSE: ${sessionId} | IP: ${clientIp}`);
+        console.log(`[MCP] Headers:`, {
+            origin: req.headers.origin,
+            'user-agent': req.headers['user-agent']?.slice(0, 50),
+            accept: req.headers.accept
+        });
+
+        // Headers CORS essenciais para n8n
+        const origin = req.headers.origin || '*';
+        reply.raw.setHeader('Access-Control-Allow-Origin', origin);
+        reply.raw.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        reply.raw.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
+        reply.raw.setHeader('Access-Control-Allow-Credentials', 'true');
+        
+        // Headers SSE essenciais
+        reply.raw.setHeader('Content-Type', 'text/event-stream');
+        reply.raw.setHeader('Cache-Control', 'no-cache, no-transform');
+        reply.raw.setHeader('Connection', 'keep-alive');
+        reply.raw.setHeader('X-Accel-Buffering', 'no'); // Desativa buffering no Nginx/Easypanel
+        reply.raw.setHeader('X-Content-Type-Options', 'nosniff');
+        reply.raw.statusCode = 200;
 
         const transport = new SSEServerTransport(`/messages?sessionId=${sessionId}`, reply.raw);
-        sessions.set(sessionId, transport);
+        
+        // Keep-alive a cada 30 segundos para manter conexão aberta (n8n, proxies)
+        const keepAliveInterval = setInterval(() => {
+            try {
+                if (reply.raw.writable && !reply.raw.writableEnded) {
+                    reply.raw.write(':ping\n\n'); // Comentário SSE (não dispara evento)
+                }
+            } catch (err) {
+                console.log(`[MCP] Keep-alive falhou para ${sessionId}, limpando...`);
+                clearInterval(keepAliveInterval);
+                sessions.delete(sessionId);
+            }
+        }, 30000);
+        
+        sessions.set(sessionId, { transport, keepAliveInterval });
 
-        await server.connect(transport);
+        try {
+            await server.connect(transport);
+            console.log(`[MCP] ✅ Servidor conectado à sessão: ${sessionId}`);
+        } catch (err: any) {
+            console.error(`[MCP] ❌ Erro ao conectar servidor:`, err.message);
+            clearInterval(keepAliveInterval);
+            sessions.delete(sessionId);
+            return reply.code(500).send('Failed to initialize MCP server');
+        }
 
         reply.raw.on('close', () => {
-            console.log(`[MCP] Conexão SSE encerrada: ${sessionId}`);
+            console.log(`[MCP] 🔴 Conexão encerrada: ${sessionId}`);
+            const session = sessions.get(sessionId);
+            if (session?.keepAliveInterval) {
+                clearInterval(session.keepAliveInterval);
+            }
+            sessions.delete(sessionId);
+        });
+
+        reply.raw.on('error', (err) => {
+            console.error(`[MCP] ⚠️ Erro na conexão ${sessionId}:`, err.message);
+            const session = sessions.get(sessionId);
+            if (session?.keepAliveInterval) {
+                clearInterval(session.keepAliveInterval);
+            }
             sessions.delete(sessionId);
         });
     });
 
+    // Handler para preflight requests (CORS)
+    app.options("/sse", async (req, reply) => {
+        const origin = req.headers.origin || '*';
+        reply.header('Access-Control-Allow-Origin', origin);
+        reply.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
+        reply.header('Access-Control-Allow-Credentials', 'true');
+        reply.header('Access-Control-Max-Age', '86400');
+        reply.code(204).send();
+    });
+
+    // Endpoint de mensagens com melhor tratamento de erros
     app.post("/messages", async (req, reply) => {
         const sessionId = (req.query as any).sessionId;
-        const transport = sessions.get(sessionId);
+        const session = sessions.get(sessionId);
+        
+        console.log(`[MCP] 📨 Mensagem recebida para sessão: ${sessionId?.slice(0, 8)}...`);
 
-        if (transport) {
-            await transport.handlePostMessage(req.raw, reply.raw);
-        } else {
-            console.warn(`[MCP] Mensagem recebida para sessão inexistente: ${sessionId}`);
-            reply.code(404).send("Session not found or expired");
+        if (!session) {
+            console.warn(`[MCP] ⚠️ Sessão não encontrada: ${sessionId}`);
+            return reply.code(404).send({ 
+                error: "Session not found", 
+                message: "A sessão expirou ou é inválida. Reconecte via /sse"
+            });
+        }
+
+        // CORS headers
+        const origin = req.headers.origin || '*';
+        reply.header('Access-Control-Allow-Origin', origin);
+        reply.header('Access-Control-Allow-Credentials', 'true');
+
+        try {
+            await session.transport.handlePostMessage(req.raw, reply.raw);
+            console.log(`[MCP] ✅ Mensagem processada com sucesso`);
+        } catch (err: any) {
+            console.error(`[MCP] ❌ Erro ao processar mensagem:`, err.message);
+            if (!reply.raw.headersSent) {
+                reply.code(500).send({ 
+                    error: "Internal server error", 
+                    message: err.message 
+                });
+            }
         }
     });
+
+    // Handler OPTIONS para messages (CORS preflight)
+    app.options("/messages", async (req, reply) => {
+        const origin = req.headers.origin || '*';
+        reply.header('Access-Control-Allow-Origin', origin);
+        reply.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
+        reply.header('Access-Control-Allow-Credentials', 'true');
+        reply.header('Access-Control-Max-Age', '86400');
+        reply.code(204).send();
+    });
+
+    console.log('[MCP] ✅ Servidor MCP inicializado com sucesso');
+    console.log('[MCP] Endpoints: GET/OPTIONS /sse, POST/OPTIONS /messages');
 }

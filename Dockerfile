@@ -18,8 +18,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Instalar bibliotecas de runtime necessárias
-RUN apk add --no-cache libstdc++ 
-
+RUN apk add --no-cache libstdc++ gcompat
 # Instalar dependências de produção apenas
 COPY package*.json ./
 RUN npm install --production

@@ -120,9 +120,12 @@ export async function resultadosRoutes(app: FastifyInstance) {
             const buffer = await renderService.renderImage(resultado);
             reply.header('Content-Type', 'image/png');
             return reply.send(buffer);
-        } catch (error) {
-            console.error(error);
-            return reply.status(500).send("Erro ao gerar imagem.");
+        } catch (error: any) {
+            console.error('[ResultadosRoute] Erro ao gerar imagem:', error);
+            return reply.status(500).send({
+                error: "Erro ao gerar imagem.",
+                message: error.message || "Erro desconhecido"
+            });
         }
     });
 

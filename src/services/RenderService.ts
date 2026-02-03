@@ -20,27 +20,31 @@ export class RenderService {
     }
 
     public async initFonts() {
-        // Forçar recarga das fontes (cache invalidado)
-        fontBuffer = null;
-        fontBoldBuffer = null;
+        if (fontBuffer && fontBoldBuffer) {
+            return; // Already loaded
+        }
 
-        if (!fontBuffer) {
-            try {
-                // Tentar carregar arquivos locais primeiro (mais estável)
-                if (await fs.pathExists(REGULAR_FONT_PATH)) {
-                    fontBuffer = await fs.readFile(REGULAR_FONT_PATH);
-                }
-
-                if (await fs.pathExists(BOLD_FONT_PATH)) {
-                    fontBoldBuffer = await fs.readFile(BOLD_FONT_PATH);
-                }
-
-                if (!fontBuffer || !fontBoldBuffer) {
-                    console.warn('[RenderService] Fontes locais não encontradas. Verifique src/assets/fonts/');
-                }
-            } catch (e) {
-                console.error('Falha crítica ao ler fontes locais:', e);
+        try {
+            if (!fontBuffer && await fs.pathExists(REGULAR_FONT_PATH)) {
+                console.log('[RenderService] Carregando fonte regular...');
+                fontBuffer = await fs.readFile(REGULAR_FONT_PATH);
             }
+
+            if (!fontBoldBuffer && await fs.pathExists(BOLD_FONT_PATH)) {
+                console.log('[RenderService] Carregando fonte negrito...');
+                fontBoldBuffer = await fs.readFile(BOLD_FONT_PATH);
+            }
+
+            if (!fontBuffer || !fontBoldBuffer) {
+                const missing = [];
+                if (!fontBuffer) missing.push('Inter-Regular.ttf');
+                if (!fontBoldBuffer) missing.push('Inter-Bold.ttf');
+                throw new Error(`Fontes locais não encontradas: ${missing.join(', ')}. Verifique src/assets/fonts/`);
+            }
+            console.log('[RenderService] Fontes carregadas com sucesso.');
+        } catch (e: any) {
+            console.error('[RenderService] Falha crítica ao carregar fontes:', e.message);
+            throw e;
         }
     }
 

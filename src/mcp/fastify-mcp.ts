@@ -23,7 +23,7 @@ async function getHistoriaContent(): Promise<string> {
     if (historiaCache && (now - historiaCacheTime) < CACHE_TTL) {
         return historiaCache;
     }
-    
+
     try {
         const filePath = path.resolve('src/data/historia.md');
         const content = await fs.readFile(filePath, 'utf-8');
@@ -41,7 +41,31 @@ O arquivo de história não está disponível no momento, mas você pode consult
 
 export async function registerMcpRoutes(app: FastifyInstance) {
     console.log('[MCP] Inicializando servidor MCP...');
-    
+
+    // CRÍTICO: Desabilitar o body parsing automático para as rotas MCP
+    // O SDK MCP precisa ler o corpo da requisição diretamente do stream.
+    // Se o Fastify parsear antes, o stream fica vazio e o SDK recebe null.
+    app.addContentTypeParser('application/json',
+        { parseAs: 'string', bodyLimit: 1024 * 1024 },
+        (req, body, done) => {
+            // Para rotas MCP, armazenamos o body como string para uso posterior
+            // mas NÃO parseamos ainda para permitir que o SDK leia o raw stream
+            const url = req.url || '';
+            if (url.includes('/messages') || url === '/mcp') {
+                // Para rotas MCP, guardar body raw como propriedade especial
+                (req as any).mcpRawBody = body;
+                done(null, body ? JSON.parse(body as string) : undefined);
+            } else {
+                // Para outras rotas, parsear normalmente
+                try {
+                    done(null, body ? JSON.parse(body as string) : undefined);
+                } catch (err: any) {
+                    done(err, undefined);
+                }
+            }
+        }
+    );
+
     const server = new Server(
         {
             name: "jogodobicho-mcp",
@@ -163,14 +187,14 @@ export async function registerMcpRoutes(app: FastifyInstance) {
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { name, arguments: args } = request.params;
         const startTime = Date.now();
-        
+
         console.log(`[MCP] Executando tool: ${name}`, args ? JSON.stringify(args) : '');
 
         try {
             if (name === "listar_resultados") {
                 const data = args?.data as string | undefined;
                 const loterica = args?.loterica as string | undefined;
-                
+
                 let qs = `
                 SELECT r.data, r.horario, r.loterica_slug, 
                        json_group_array(json_object('posicao', p.posicao, 'bicho', p.bicho, 'milhar', p.milhar, 'grupo', p.grupo)) as premios
@@ -179,7 +203,7 @@ export async function registerMcpRoutes(app: FastifyInstance) {
                 WHERE 1=1
                 `;
                 const params: any[] = [];
-                
+
                 if (data) {
                     qs += ' AND r.data = ?';
                     params.push(data);
@@ -188,9 +212,9 @@ export async function registerMcpRoutes(app: FastifyInstance) {
                     qs += ' AND r.loterica_slug = ?';
                     params.push(loterica);
                 }
-                
+
                 qs += ' GROUP BY r.id ORDER BY r.data DESC, r.horario DESC LIMIT 10';
-                
+
                 const res = db.prepare(qs).all(...params);
                 const duration = Date.now() - startTime;
                 console.log(`[MCP] listar_resultados: ${res.length} resultados em ${duration}ms`);
@@ -209,24 +233,24 @@ export async function registerMcpRoutes(app: FastifyInstance) {
             if (name === "buscar_bicho") {
                 const q = args?.query as string;
                 if (!q) throw new Error("Parâmetro 'query' é obrigatório");
-                
+
                 const g = parseInt(q);
                 let b: { grupo: number; nome: string; dezenas: string[] } | undefined;
-                
+
                 if (!isNaN(g) && g >= 1 && g <= 25) {
                     b = getBichoByGrupo(g);
                 } else {
                     // Tenta como dezena (00-99)
                     b = getBichoByDezena(q.padStart(2, '0'));
                 }
-                
+
                 if (!b) {
-                    return { 
+                    return {
                         content: [{ type: "text", text: JSON.stringify({ error: "Bicho não encontrado. Use grupo (1-25) ou dezena (00-99)" }, null, 2) }],
-                        isError: true 
+                        isError: true
                     };
                 }
-                
+
                 return { content: [{ type: "text", text: JSON.stringify(b, null, 2) }] };
             }
 
@@ -248,9 +272,9 @@ export async function registerMcpRoutes(app: FastifyInstance) {
 
                 const header = headers[secao];
                 if (!header) {
-                    return { 
+                    return {
                         content: [{ type: "text", text: `Seção '${secao}' não encontrada. Seções disponíveis: ${Object.keys(headers).join(', ')}` }],
-                        isError: true 
+                        isError: true
                     };
                 }
 
@@ -264,9 +288,9 @@ export async function registerMcpRoutes(app: FastifyInstance) {
             if (name === "calcular_numerologia") {
                 const nome = args?.nome as string;
                 if (!nome || nome.trim().length === 0) {
-                    return { 
+                    return {
                         content: [{ type: "text", text: "Erro: Nome não pode estar vazio" }],
-                        isError: true 
+                        isError: true
                     };
                 }
                 const res = numerologyService.calculate(nome);
@@ -287,12 +311,14 @@ export async function registerMcpRoutes(app: FastifyInstance) {
 
                 const res = db.prepare(query).all(...params);
                 if (res.length === 0) {
-                    return { 
-                        content: [{ type: "text", text: JSON.stringify({ 
-                            message: "Horóscopo não disponível para hoje ainda",
-                            data: today,
-                            signo: signo || 'todos'
-                        }, null, 2) }] 
+                    return {
+                        content: [{
+                            type: "text", text: JSON.stringify({
+                                message: "Horóscopo não disponível para hoje ainda",
+                                data: today,
+                                signo: signo || 'todos'
+                            }, null, 2)
+                        }]
                     };
                 }
                 return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }] };
@@ -306,9 +332,9 @@ export async function registerMcpRoutes(app: FastifyInstance) {
             if (name === "criar_webhook") {
                 const url = args?.url as string;
                 if (!url || !url.startsWith('http')) {
-                    return { 
+                    return {
                         content: [{ type: "text", text: "Erro: URL inválida. Deve começar com http:// ou https://" }],
-                        isError: true 
+                        isError: true
                     };
                 }
                 webhookService.register(url);
@@ -318,9 +344,9 @@ export async function registerMcpRoutes(app: FastifyInstance) {
             if (name === "deletar_webhook") {
                 const id = args?.id as string;
                 if (!id) {
-                    return { 
+                    return {
                         content: [{ type: "text", text: "Erro: ID do webhook é obrigatório" }],
-                        isError: true 
+                        isError: true
                     };
                 }
                 webhookService.delete(id);
@@ -345,7 +371,7 @@ export async function registerMcpRoutes(app: FastifyInstance) {
     // Endpoint SSE com suporte a CORS e keep-alive
     app.get("/sse", async (req, reply) => {
         const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
-        
+
         console.log(`[MCP] 🟢 Nova conexão SSE solicitada | IP: ${clientIp}`);
         console.log(`[MCP] Headers:`, {
             origin: req.headers.origin,
@@ -359,7 +385,7 @@ export async function registerMcpRoutes(app: FastifyInstance) {
         reply.raw.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
         reply.raw.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
         reply.raw.setHeader('Access-Control-Allow-Credentials', 'true');
-        
+
         // Headers SSE essenciais
         reply.raw.setHeader('Content-Type', 'text/event-stream');
         reply.raw.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -370,11 +396,11 @@ export async function registerMcpRoutes(app: FastifyInstance) {
 
         // Criar transport SEM sessionId na URL - o SDK gera automaticamente
         const transport = new SSEServerTransport("/messages", reply.raw);
-        
+
         // O SDK gera o sessionId internamente e expõe via transport.sessionId
         const sessionId = transport.sessionId;
         console.log(`[MCP] 📋 Session ID gerado pelo SDK: ${sessionId}`);
-        
+
         // Keep-alive a cada 30 segundos para manter conexão aberta (n8n, proxies)
         const keepAliveInterval = setInterval(() => {
             try {
@@ -387,7 +413,7 @@ export async function registerMcpRoutes(app: FastifyInstance) {
                 sessions.delete(sessionId);
             }
         }, 30000);
-        
+
         sessions.set(sessionId, { transport, keepAliveInterval });
 
         try {
@@ -434,13 +460,13 @@ export async function registerMcpRoutes(app: FastifyInstance) {
     app.post("/messages", async (req, reply) => {
         const sessionId = (req.query as any).sessionId;
         const session = sessions.get(sessionId);
-        
+
         console.log(`[MCP] 📨 Mensagem recebida para sessão: ${sessionId?.slice(0, 8)}...`);
 
         if (!session) {
             console.warn(`[MCP] ⚠️ Sessão não encontrada: ${sessionId}`);
-            return reply.code(404).send({ 
-                error: "Session not found", 
+            return reply.code(404).send({
+                error: "Session not found",
                 message: "A sessão expirou ou é inválida. Reconecte via /sse"
             });
         }
@@ -451,14 +477,27 @@ export async function registerMcpRoutes(app: FastifyInstance) {
         reply.header('Access-Control-Allow-Credentials', 'true');
 
         try {
-            await session.transport.handlePostMessage(req.raw, reply.raw);
+            // O Fastify já consumiu o body do req.raw, então precisamos criar um
+            // stream sintético para o SDK MCP poder ler o conteúdo
+            const { Readable } = await import('node:stream');
+            const bodyString = (req as any).mcpRawBody || JSON.stringify(req.body);
+            const syntheticReq = Object.assign(
+                Readable.from(bodyString),
+                {
+                    headers: req.raw.headers,
+                    method: req.raw.method,
+                    url: req.raw.url
+                }
+            );
+
+            await session.transport.handlePostMessage(syntheticReq as any, reply.raw);
             console.log(`[MCP] ✅ Mensagem processada com sucesso`);
         } catch (err: any) {
-            console.error(`[MCP] ❌ Erro ao processar mensagem:`, err.message);
+            console.error(`[MCP] ❌ Erro ao processar mensagem:`, err.message, err.stack);
             if (!reply.raw.headersSent) {
-                reply.code(500).send({ 
-                    error: "Internal server error", 
-                    message: err.message 
+                reply.code(500).send({
+                    error: "Internal server error",
+                    message: err.message
                 });
             }
         }
@@ -476,7 +515,7 @@ export async function registerMcpRoutes(app: FastifyInstance) {
     });
 
     // ENDPOINTS DE DESCOBERTA HTTP (para compatibilidade com n8n e outros clients)
-    
+
     // Health check MCP
     app.get("/mcp/health", async (req, reply) => {
         reply.header('Access-Control-Allow-Origin', '*');
@@ -496,7 +535,7 @@ export async function registerMcpRoutes(app: FastifyInstance) {
     app.get("/mcp/tools", async (req, reply) => {
         reply.header('Access-Control-Allow-Origin', '*');
         reply.header('Content-Type', 'application/json');
-        
+
         const tools = [
             {
                 name: "listar_resultados",
@@ -590,7 +629,7 @@ export async function registerMcpRoutes(app: FastifyInstance) {
                 }
             }
         ];
-        
+
         reply.code(200).send({ tools });
     });
 
@@ -613,20 +652,20 @@ export async function registerMcpRoutes(app: FastifyInstance) {
     app.post("/mcp/execute", async (req, reply) => {
         reply.header('Access-Control-Allow-Origin', '*');
         reply.header('Content-Type', 'application/json');
-        
+
         const body = req.body as any;
         const { name, arguments: args } = body;
-        
+
         if (!name) {
             return reply.code(400).send({ error: "Tool name is required" });
         }
-        
+
         console.log(`[MCP HTTP] Executando tool: ${name}`, args);
-        
+
         try {
             // Executar a tool diretamente (simplificado)
             let result: any;
-            
+
             if (name === "listar_lotericas") {
                 result = db.prepare('SELECT slug, nome FROM lotericas ORDER BY nome').all();
             } else if (name === "tabela_bichos") {
@@ -640,17 +679,17 @@ export async function registerMcpRoutes(app: FastifyInstance) {
             } else {
                 return reply.code(400).send({ error: `Tool ${name} not available in HTTP mode. Use SSE connection.` });
             }
-            
-            reply.code(200).send({ 
-                success: true, 
+
+            reply.code(200).send({
+                success: true,
                 result,
-                tool: name 
+                tool: name
             });
         } catch (error: any) {
             console.error(`[MCP HTTP] Erro:`, error.message);
-            reply.code(500).send({ 
-                success: false, 
-                error: error.message 
+            reply.code(500).send({
+                success: false,
+                error: error.message
             });
         }
     });
@@ -667,19 +706,19 @@ export async function registerMcpRoutes(app: FastifyInstance) {
     // ==========================================
     // Este endpoint suporta o transporte HTTP Streamable moderno do MCP
     // Aceita: GET (upgrade para SSE) ou POST (HTTP Streamable direto)
-    
+
     let httpTransport: StreamableHTTPServerTransport | null = null;
 
     // Negociação de transporte no /mcp
     app.get("/mcp", async (req, reply) => {
         const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
         console.log(`[MCP Streamable] 🟢 Requisição GET /mcp de ${clientIp}`);
-        
+
         // Headers CORS
         const origin = req.headers.origin || '*';
         reply.raw.setHeader('Access-Control-Allow-Origin', origin);
         reply.raw.setHeader('Access-Control-Allow-Credentials', 'true');
-        
+
         // Headers SSE
         reply.raw.setHeader('Content-Type', 'text/event-stream');
         reply.raw.setHeader('Cache-Control', 'no-cache');
@@ -690,9 +729,9 @@ export async function registerMcpRoutes(app: FastifyInstance) {
         const sessionId = crypto.randomUUID();
         const transport = new SSEServerTransport("/mcp/messages", reply.raw);
         const actualSessionId = transport.sessionId;
-        
+
         console.log(`[MCP Streamable] Session SSE: ${actualSessionId}`);
-        
+
         const keepAliveInterval = setInterval(() => {
             try {
                 if (reply.raw.writable && !reply.raw.writableEnded) {
@@ -703,7 +742,7 @@ export async function registerMcpRoutes(app: FastifyInstance) {
                 sessions.delete(actualSessionId);
             }
         }, 30000);
-        
+
         sessions.set(actualSessionId, { transport, keepAliveInterval });
 
         try {
@@ -728,22 +767,22 @@ export async function registerMcpRoutes(app: FastifyInstance) {
     app.post("/mcp", async (req, reply) => {
         console.log(`[MCP Streamable] 📨 POST /mcp recebido`);
         console.log(`[MCP Streamable] Headers:`, req.headers);
-        
+
         // Headers CORS
         const origin = req.headers.origin || '*';
         reply.header('Access-Control-Allow-Origin', origin);
         reply.header('Access-Control-Allow-Credentials', 'true');
-        
+
         try {
             // Verificar se é uma mensagem JSON-RPC válida (request ou notification)
             const body = req.body as any;
-            
+
             // Validação manual: aceita tanto requests (com id) quanto notificações (sem id)
-            const isValidJSONRPC = body && 
-                typeof body === 'object' && 
-                body.jsonrpc === '2.0' && 
+            const isValidJSONRPC = body &&
+                typeof body === 'object' &&
+                body.jsonrpc === '2.0' &&
                 typeof body.method === 'string';
-            
+
             if (!isValidJSONRPC) {
                 console.log(`[MCP Streamable] ⚠️ Body inválido:`, body);
                 return reply.code(400).send({
@@ -767,7 +806,7 @@ export async function registerMcpRoutes(app: FastifyInstance) {
             // Processar a requisição
             await httpTransport.handleRequest(req.raw, reply.raw, req.body);
             console.log(`[MCP Streamable] ✅ Requisição processada`);
-            
+
         } catch (error: any) {
             console.error(`[MCP Streamable] ❌ Erro:`, error.message);
             if (!reply.raw.headersSent) {
@@ -804,12 +843,12 @@ export async function registerMcpRoutes(app: FastifyInstance) {
     app.post("/mcp/messages", async (req, reply) => {
         const sessionId = (req.query as any).sessionId;
         const session = sessions.get(sessionId);
-        
+
         console.log(`[MCP Streamable] 📨 POST /mcp/messages - Session: ${sessionId?.slice(0, 8)}...`);
 
         if (!session) {
             console.warn(`[MCP Streamable] ⚠️ Sessão não encontrada: ${sessionId}`);
-            return reply.code(404).send({ 
+            return reply.code(404).send({
                 error: "Session not found",
                 message: "Session expired or invalid"
             });
@@ -820,10 +859,22 @@ export async function registerMcpRoutes(app: FastifyInstance) {
         reply.header('Access-Control-Allow-Credentials', 'true');
 
         try {
-            await session.transport.handlePostMessage(req.raw, reply.raw);
+            // Mesmo fix: criar stream sintético para o SDK
+            const { Readable } = await import('node:stream');
+            const bodyString = (req as any).mcpRawBody || JSON.stringify(req.body);
+            const syntheticReq = Object.assign(
+                Readable.from(bodyString),
+                {
+                    headers: req.raw.headers,
+                    method: req.raw.method,
+                    url: req.raw.url
+                }
+            );
+
+            await session.transport.handlePostMessage(syntheticReq as any, reply.raw);
             console.log(`[MCP Streamable] ✅ Mensagem processada`);
         } catch (err: any) {
-            console.error(`[MCP Streamable] ❌ Erro:`, err.message);
+            console.error(`[MCP Streamable] ❌ Erro:`, err.message, err.stack);
             if (!reply.raw.headersSent) {
                 reply.code(500).send({ error: "Internal error", message: err.message });
             }

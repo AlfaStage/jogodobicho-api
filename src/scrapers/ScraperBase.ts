@@ -19,8 +19,12 @@ export abstract class ScraperBase {
                 },
             });
             return cheerio.load(data);
-        } catch (error) {
-            console.error(`Erro ao buscar HTML de ${url}:`, error);
+        } catch (error: any) {
+            if (error.isAxiosError && error.response) {
+                console.error(`Erro ${error.response.status} ao buscar HTML de ${url}`);
+            } else {
+                console.error(`Erro ao buscar HTML de ${url}:`, error.message || error);
+            }
             return null;
         }
     }

@@ -41,26 +41,19 @@ export class ResultadoFacilScraper extends ScraperBase {
             'Referer': 'https://www.google.com/'
         };
 
-        const $ = await this.fetchHtml(url, headers);
-        if (!$) return;
+        try {
+            const $ = await this.fetchHtml(url, headers);
+            if (!$) return;
 
-        // Estrutura do ResultadoFacil varia, mas geralmente tem cards por sorteio.
-        // Vamos tentar identificar blocos de sorteio.
-        // Classicos divs com classe "sorteio" ou similar?
-        // Como não conseguimos ver o HTML protegido, vamos assumir uma estrutura genérica
-        // baseada em observação externa (se possível) ou tentativa e erro.
-        // Se falhar o parse, ok.
-
-        // Estrutura Hipotetica:
-        // H2 ou H3 com horario.
-        // Table ou List com premios.
-
-        // Vamos logar que conseguimos acessar para debug futuro
-        // console.log(`[ResultadoFacil] Acesso OK a ${url}`);
-
-        // TODO: Implementar parser específico assim que tivermos acesso ao HTML real.
-        // Por enquanto, deixamos o esqueleto funcional para conectividade.
-        // Se o fetchHtml passar (200 OK), já é um avanço.
+            // Parser logic here...
+            // Por enquanto, apenas log de sucesso (removido log excessivo)
+        } catch (e: any) {
+            if (e.response && e.response.status === 429) {
+                console.warn(`[ResultadoFacil] Limite de requisições (429) excedido para ${slug}. Pulando.`);
+                return;
+            }
+            throw e;
+        }
 
         return;
     }

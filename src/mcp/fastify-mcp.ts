@@ -470,6 +470,194 @@ export async function registerMcpRoutes(app: FastifyInstance) {
         reply.code(204).send();
     });
 
+    // ENDPOINTS DE DESCOBERTA HTTP (para compatibilidade com n8n e outros clients)
+    
+    // Health check MCP
+    app.get("/mcp/health", async (req, reply) => {
+        reply.header('Access-Control-Allow-Origin', '*');
+        reply.code(200).send({
+            status: "healthy",
+            server: "jogodobicho-mcp",
+            version: "1.0.0",
+            capabilities: ["tools"],
+            endpoints: {
+                sse: "/sse",
+                messages: "/messages"
+            }
+        });
+    });
+
+    // Listar tools via HTTP (n8n verifica isso antes de conectar)
+    app.get("/mcp/tools", async (req, reply) => {
+        reply.header('Access-Control-Allow-Origin', '*');
+        reply.header('Content-Type', 'application/json');
+        
+        const tools = [
+            {
+                name: "listar_resultados",
+                description: "Lista últimos resultados do Jogo do Bicho",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        data: { type: "string", description: "Data no formato YYYY-MM-DD" },
+                        loterica: { type: "string", description: "Slug da lotérica (ex: pt-rio, federal, look-goias)" }
+                    }
+                }
+            },
+            {
+                name: "listar_lotericas",
+                description: "Lista todas as bancas/lotéricas disponíveis e seus slugs"
+            },
+            {
+                name: "tabela_bichos",
+                description: "Retorna a tabela completa de todos os 25 bichos e suas dezenas"
+            },
+            {
+                name: "buscar_bicho",
+                description: "Busca informações de um bicho pelo grupo (1-25) ou dezena (00-99)",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        query: { type: "string", description: "Grupo (ex: 1) ou Dezena (ex: 01, 12)" }
+                    },
+                    required: ["query"]
+                }
+            },
+            {
+                name: "como_jogar",
+                description: "Retorna instruções, regras e história do Jogo do Bicho",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        secao: {
+                            type: "string",
+                            enum: ["regras", "tabela", "modalidades", "historia", "dicas"],
+                            description: "Seção específica para ler (opcional)"
+                        }
+                    }
+                }
+            },
+            {
+                name: "calcular_numerologia",
+                description: "Calcula os números da sorte baseados no nome usando numerologia cabalistica",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        nome: { type: "string", description: "Nome completo para calcular os números da sorte" }
+                    },
+                    required: ["nome"]
+                }
+            },
+            {
+                name: "horoscopo_dia",
+                description: "Retorna o horóscopo do dia com números da sorte para cada signo",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        signo: { type: "string", description: "Nome do signo (ex: Áries, Touro, etc). Deixe vazio para todos." }
+                    }
+                }
+            },
+            {
+                name: "listar_webhooks",
+                description: "Lista todos os webhooks de notificação registrados"
+            },
+            {
+                name: "criar_webhook",
+                description: "Registra um novo webhook para receber resultados automaticamente",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        url: { type: "string", description: "URL do webhook que receberá POST com os resultados" }
+                    },
+                    required: ["url"]
+                }
+            },
+            {
+                name: "deletar_webhook",
+                description: "Remove um webhook pelo ID",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        id: { type: "string", description: "UUID do webhook a ser removido" }
+                    },
+                    required: ["id"]
+                }
+            }
+        ];
+        
+        reply.code(200).send({ tools });
+    });
+
+    // Endpoint OPTIONS para CORS preflight dos endpoints HTTP
+    app.options("/mcp/health", async (req, reply) => {
+        reply.header('Access-Control-Allow-Origin', '*');
+        reply.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
+        reply.code(204).send();
+    });
+
+    app.options("/mcp/tools", async (req, reply) => {
+        reply.header('Access-Control-Allow-Origin', '*');
+        reply.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
+        reply.code(204).send();
+    });
+
+    // Endpoint stateless para execução direta (alternativa ao SSE)
+    app.post("/mcp/execute", async (req, reply) => {
+        reply.header('Access-Control-Allow-Origin', '*');
+        reply.header('Content-Type', 'application/json');
+        
+        const body = req.body as any;
+        const { name, arguments: args } = body;
+        
+        if (!name) {
+            return reply.code(400).send({ error: "Tool name is required" });
+        }
+        
+        console.log(`[MCP HTTP] Executando tool: ${name}`, args);
+        
+        try {
+            // Executar a tool diretamente (simplificado)
+            let result: any;
+            
+            if (name === "listar_lotericas") {
+                result = db.prepare('SELECT slug, nome FROM lotericas ORDER BY nome').all();
+            } else if (name === "tabela_bichos") {
+                result = bichosData;
+            } else if (name === "buscar_bicho") {
+                const q = args?.query as string;
+                if (!q) throw new Error("Query is required");
+                const g = parseInt(q);
+                result = (!isNaN(g) && g >= 1 && g <= 25) ? getBichoByGrupo(g) : getBichoByDezena(q.padStart(2, '0'));
+                if (!result) throw new Error("Bicho não encontrado");
+            } else {
+                return reply.code(400).send({ error: `Tool ${name} not available in HTTP mode. Use SSE connection.` });
+            }
+            
+            reply.code(200).send({ 
+                success: true, 
+                result,
+                tool: name 
+            });
+        } catch (error: any) {
+            console.error(`[MCP HTTP] Erro:`, error.message);
+            reply.code(500).send({ 
+                success: false, 
+                error: error.message 
+            });
+        }
+    });
+
+    app.options("/mcp/execute", async (req, reply) => {
+        reply.header('Access-Control-Allow-Origin', '*');
+        reply.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
+        reply.code(204).send();
+    });
+
     console.log('[MCP] ✅ Servidor MCP inicializado com sucesso');
-    console.log('[MCP] Endpoints: GET/OPTIONS /sse, POST/OPTIONS /messages');
+    console.log('[MCP] Endpoints SSE: GET /sse, POST /messages');
+    console.log('[MCP] Endpoints HTTP: GET /mcp/health, GET /mcp/tools, POST /mcp/execute');
 }

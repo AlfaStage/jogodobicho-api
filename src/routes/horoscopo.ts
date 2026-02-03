@@ -13,7 +13,7 @@ export async function horoscopoRoutes(app: FastifyInstance) {
             tags: ['Horóscopo'],
             querystring: z.object({
                 data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato YYYY-MM-DD").optional()
-                    .describe('Data da previsão (ex: 2024-05-20)')
+                    .describe('Data da previsão (ex: 2026-02-03). Default: hoje.')
             }),
             response: {
                 200: z.array(z.object({
@@ -32,5 +32,54 @@ export async function horoscopoRoutes(app: FastifyInstance) {
         const results = stmt.all(targetDate);
 
         return results as any[];
+    });
+
+    // Rota por signo específico
+    server.get('/:signo', {
+        schema: {
+            summary: 'Horóscopo por Signo',
+            description: 'Retorna a previsão para um signo específico.',
+            tags: ['Horóscopo'],
+            params: z.object({
+                signo: z.string().describe('Nome do signo (ex: aries, leao, touro)')
+            }),
+            querystring: z.object({
+                data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato YYYY-MM-DD").optional()
+            }),
+            response: {
+                200: z.object({
+                    signo: z.string(),
+                    texto: z.string().nullable(),
+                    numeros: z.string().nullable(),
+                    data: z.string()
+                }),
+                404: z.object({ message: z.string() })
+            }
+        }
+    }, async (request, reply) => {
+        const { signo } = request.params;
+        const { data } = request.query;
+        const targetDate = data || new Date().toISOString().split('T')[0];
+
+        // Normalizar signo (sem acentos)
+        const signoNorm = signo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+        const stmt = db.prepare('SELECT signo, texto, numeros, data FROM horoscopo_diario WHERE data = ?');
+        const results = stmt.all(targetDate) as any[];
+
+        const found = results.find(r => {
+            const rNorm = r.signo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            return rNorm === signoNorm;
+        });
+
+        if (found) return found;
+
+        // Se não houver dados no banco, retornar previsão genérica
+        return {
+            signo: signo.charAt(0).toUpperCase() + signo.slice(1).toLowerCase(),
+            texto: 'Previsão não disponível para esta data. Consulte novamente mais tarde.',
+            numeros: null,
+            data: targetDate
+        };
     });
 }

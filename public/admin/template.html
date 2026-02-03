@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Designer de Template</title>
+    <link rel="stylesheet" href="../css/admin-theme.css">
+    <style>
+        /* Ajustes específicos para o Editor */
+        .editor-container {
+            display: flex;
+            flex: 1;
+            gap: 20px;
+            padding: 20px;
+            height: calc(100vh - 80px);
+            /* Ajuste para caber com header */
+            box-sizing: border-box;
+        }
+
+        .pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        textarea {
+            flex: 1;
+            background: #111;
+            color: #d4d4d4;
+            border: none;
+            padding: 20px;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            resize: none;
+            line-height: 1.6;
+        }
+
+        .preview-content {
+            flex: 1;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            overflow-y: auto;
+            background: #0a0a0a;
+            /* Fundo levemente mais escuro para contraste */
+        }
+
+        iframe {
+            border: none;
+            width: 350px;
+            height: 600px;
+            background: transparent;
+            transition: height 0.3s ease;
+        }
+
+        img {
+            margin-top: 30px;
+            width: 350px;
+            height: auto;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .status-badge {
+            margin-right: 15px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <h1>Jogo do Bicho</h1>
+            <nav class="nav">
+                <a href="/admin/webhooks">Webhooks</a>
+                <a href="/admin/template" class="active">Template</a>
+                <a href="/live" target="_blank">Ao Vivo ↗</a>
+            </nav>
+        </div>
+        <div>
+            <span id="status" class="status-badge"></span>
+            <button class="secondary" onclick="updatePreview()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6" />
+                    <path d="M1 20v-6h6" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Preview
+            </button>
+            <button onclick="saveTemplate()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                    <polyline points="17 21 17 13 7 13 7 21" />
+                    <polyline points="7 3 7 8 15 8" />
+                </svg>
+                Salvar
+            </button>
+        </div>
+    </header>
+
+    <div class="editor-container">
+        <div class="pane">
+            <div class="pane-header">
+                <span>HTML (Editável)</span>
+                <span style="font-size: 0.8em; opacity: 0.7;">Variáveis: {{DATA}}, {{PREMIOS}}, {{LOTERICA}}</span>
+            </div>
+            <textarea id="codeEditor" spellcheck="false" placeholder="<!-- Digite seu HTML aqui -->"></textarea>
+        </div>
+
+        <div class="pane">
+            <div class="pane-header">Visualização Real</div>
+            <div class="preview-content">
+                <!-- Iframe para ver o HTML real -->
+                <div
+                    style="width: 100%; display: flex; justify-content: space-between; margin-bottom: 10px; color: #666; font-size: 0.8em;">
+                    <span>WEB PREVIEW</span>
+                </div>
+                <iframe id="iframePreview"></iframe>
+
+                <!-- Imagem gerada pelo backend (Satori) -->
+                <div
+                    style="width: 100%; display: flex; justify-content: space-between; margin-top: 30px; margin-bottom: 10px; color: #666; font-size: 0.8em;">
+                    <span>IMAGE GENERATION (PNG)</span>
+                </div>
+                <img id="imagePreview" alt="Aguardando preview..." />
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const EDITOR = document.getElementById('codeEditor');
+        const IFRAME = document.getElementById('iframePreview');
+        const IMG = document.getElementById('imagePreview');
+        const STATUS = document.getElementById('status');
+
+        const DEFAULT_TEMPLATE = `<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { font-family: sans-serif; background: #fff; padding: 20px; }
+  .card { border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
+  h1 { color: #333; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Resultado: {{LOTERICA}}</h1>
+    <p>{{DATA}} - {{HORARIO}}</p>
+    <ul>{{PREMIOS}}</ul>
+  </div>
+</body>
+</html>`;
+
+        // Carregar template atual
+        async function loadTemplate() {
+            try {
+                const res = await fetch('/admin/api/template');
+                if (res.ok) {
+                    const data = await res.json();
+                    EDITOR.value = data.html || DEFAULT_TEMPLATE;
+                } else {
+                    EDITOR.value = DEFAULT_TEMPLATE;
+                }
+                updatePreview();
+            } catch (e) {
+                console.error("Falha ao carregar", e);
+                EDITOR.value = DEFAULT_TEMPLATE;
+            }
+        }
+
+        // Gerar preview
+        async function updatePreview() {
+            const html = EDITOR.value;
+            if (!html) return;
+
+            STATUS.innerText = 'Gerando...';
+
+            try {
+                const res = await fetch('/admin/api/preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ html })
+                });
+
+                if (!res.ok) throw new Error("Erro na API");
+
+                const data = await res.json();
+
+                // Atualizar Iframe
+                const iframeDoc = IFRAME.contentWindow.document;
+                iframeDoc.open();
+                iframeDoc.write(data.html);
+                iframeDoc.close();
+
+                // Atualizar Imagem
+                IMG.src = data.image;
+                STATUS.innerText = 'Atualizado!';
+                setTimeout(() => STATUS.innerText = '', 2000);
+            } catch (e) {
+                console.error(e);
+                STATUS.innerText = 'Erro no preview.';
+            }
+        }
+
+        // Salvar
+        async function saveTemplate() {
+            STATUS.innerText = 'Salvando...';
+            const html = EDITOR.value;
+
+            try {
+                const res = await fetch('/admin/api/template', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ html })
+                });
+
+                if (res.ok) {
+                    STATUS.innerText = 'Salvo com sucesso!';
+                    setTimeout(() => STATUS.innerText = '', 2000);
+                } else {
+                    STATUS.innerText = 'Erro ao salvar.';
+                }
+            } catch (e) {
+                console.error(e);
+                STATUS.innerText = 'Erro de conexão.';
+            }
+        }
+
+        // Auto-update com debounce
+        let timeout;
+        EDITOR.addEventListener('input', () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(updatePreview, 1000);
+        });
+
+        loadTemplate();
+    </script>
+</body>
+
+</html>

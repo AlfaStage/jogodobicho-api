@@ -13,7 +13,7 @@ export async function numerologiaRoutes(app: FastifyInstance) {
             description: 'Calcula o número da sorte baseado no nome fornecido utilizando a tabela Pitagórica.',
             tags: ['Numerologia'],
             querystring: z.object({
-                nome: z.string().min(1).describe('Nome para calcular a numerologia (ex: Antigravity)')
+                nome: z.string().min(1).describe('Nome para calcular a numerologia (ex: Maria Silva ou Antigravity)')
             }),
             response: {
                 200: z.object({

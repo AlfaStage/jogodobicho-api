@@ -1,128 +1,100 @@
-# Jogo do Bicho API & MCP Server
+# Jogo do Bicho API & MCP Server 🚀
 
-API robusta para consulta de resultados do Jogo do Bicho, horóscopo, animais e instruções de jogo. Inclui servidor MCP unificado e automação via Cron Jobs.
+API robusta e alto desempenho para consulta de resultados do Jogo do Bicho, horóscopo, animais e numerologia. Inclui servidor MCP unificado para Agentes de IA e um Designer de Templates integrado.
 
-## 🚀 Funcionalidades
+## 🌟 Diferenciais
 
-- **Resultados em Tempo Real:** Scraper inteligente que detecta resultados automaticamente.
-- **Cron Jobs Integrados:** Execução automática 1 minuto após os sorteios oficiais (PT Rio, Federal, Look, etc).
-- **API REST (Fastify):** Rotas completas com documentação Swagger interativa.
-- **MCP Server (SSE):** Interface unificada para Agentes de IA (Claude via n8n ou local).
-- **Webhooks:** Notificações instantâneas via POST para novos resultados.
+- **Scrapper Inteligente**: Poller que verifica resultados a cada 2 minutos apenas para sorteios pendentes.
+- **Geração de Imagem**: Motor Satori integrado para gerar imagens PNG prontas para redes sociais (450px).
+- **Designer de Template**: Dashboard administrativo para Customização de HTML/CSS em tempo real.
+- **MCP Native**: Servidor SSE pronto para conectar com Claude, ChatGPT ou n8n.
+- **Auto-Sincronização**: Ao iniciar, o sistema busca resultados faltantes de hoje e ontem automaticamente.
 
-## 📦 Instalação
+---
 
-1. Clone o repositório.
-2. Instale as dependências:
-   ```bash
-   npm install
-   ```
-3. Compile o projeto:
-   ```bash
-   npm run build
-   ```
+## 🚀 Instalação e Execução
 
-## 🛠️ Como Usar
-
-### 1. Rodar em Desenvolvimento
-Inicie o servidor com auto-reload (porta 3000):
+### 1. Local (Desenvolvimento)
 ```bash
+npm install
 npm run dev
 ```
-- **API & Docs:** [http://localhost:3000/docs](http://localhost:3000/docs)
-- **MCP SSE:** `http://localhost:3000/sse`
+- **API**: [http://localhost:3002](http://localhost:3002)
+- **Documentação Swagger**: [http://localhost:3002/docs](http://localhost:3002/docs)
+- **Designer de Template**: [http://localhost:3002/admin/template](http://localhost:3002/admin/template)
 
-### 2. Autenticação
-A API é protegida pela variável de ambiente `API_KEY`.
-- No Swagger, use o botão **Authorize** para inserir sua chave.
-- Nas requisições, envie o cabeçalho: `x-api-key: SUA_CHAVE`.
-
-### 3. Cron Jobs (Automação)
-O sistema possui um `CronService` interno que gerencia as coletas:
-- **PT Rio:** 11:21, 14:21, 16:21, 18:21, 21:21.
-- **Federal:** 19:01 (Quartas e Sábados).
-- **Global:** Varredura a cada 15 minutos.
-- **Horóscopo:** Diariamente às 06:00.
-
-## 📚 Endpoints da API
-
-A API segue padrões REST e utiliza JSON para comunicação. Todas as chamadas (exceto `/docs` e `/health`) requerem o header `x-api-key`.
-
-### 1. Resultados (`/v1/resultados`)
-Retorna os resultados dos sorteios.
-- **Query Params:**
-  - `data`: Formato `YYYY-MM-DD` (ex: `2024-05-20`).
-  - `loterica`: Slug da banca (ex: `pt-rio`, `look-goias`, `federal`).
-
-**Exemplo Curl:**
+### 2. Docker (Produção)
 ```bash
-curl -X GET "http://localhost:3002/v1/resultados?loterica=pt-rio&data=2024-05-20" \
+docker build -t jogodobicho-api .
+docker run -p 3002:3002 -e API_KEY=sua_chave_aqui jogodobicho-api
+```
+
+### 3. Deploy no Easypanel
+1. Crie um novo **App** no Easypanel.
+2. No Source, aponte para o seu repositório GitHub.
+3. No painel **Environment**, adicione:
+   - `PORT`: 3002
+   - `API_KEY`: sua_chave_secreta
+4. O Easypanel detectará automaticamente o `Dockerfile` e fará o deploy.
+
+---
+
+## 📚 Endpoints (Exemplos CURL)
+
+Todas as rotas (exceto publicas) requerem o header `x-api-key`.
+
+### 1. Resultados
+Busca resultados por data e lotérica.
+```bash
+curl -G "http://localhost:3002/v1/resultados" \
+     -d "loterica=pt-rio" \
+     -d "data=2026-02-03" \
      -H "x-api-key: SUA_CHAVE"
 ```
 
-**Exemplo Resposta:**
-```json
-[
-  {
-    "id": "uuid-v4",
-    "data": "2024-05-20",
-    "horario": "11:00",
-    "loterica": "PT Rio / Deu no Poste",
-    "premios": [
-      { "posicao": 1, "milhar": "1234", "grupo": 9, "bicho": "Cobra" },
-      ...
-    ]
-  }
-]
+### 2. Lotéricas
+Lista todas as bancas suportadas (PT Rio, Federal, Bahia, Look, etc).
+```bash
+curl "http://localhost:3002/v1/lotericas" -H "x-api-key: SUA_CHAVE"
 ```
 
-### 2. Lotéricas (`/v1/lotericas`)
-Lista todas as bancas configuradas no sistema.
-
-**Exemplo Curl:**
+### 3. Bichos (Grupos e Dezenas)
 ```bash
-curl -X GET "http://localhost:3002/v1/lotericas" \
-     -H "x-api-key: SUA_CHAVE"
+# Buscar bicho pelo grupo ou dezena (ex: 12 retorna Elefante e Burro)
+curl "http://localhost:3002/v1/bichos/12" -H "x-api-key: SUA_CHAVE"
 ```
 
-### 3. Bichos (`/v1/bichos`)
-Consulta a tabela do Jogo do Bicho.
-- `GET /v1/bichos`: Lista todos os grupos.
-- `GET /v1/bichos/:query`: Busca por número do grupo ou dezena.
-
-**Exemplo Curl (Busca por dezena 34):**
+### 4. Horóscopo
 ```bash
-curl -X GET "http://localhost:3002/v1/bichos/34" \
-     -H "x-api-key: SUA_CHAVE"
+curl "http://localhost:3002/v1/horoscopo" -H "x-api-key: SUA_CHAVE"
 ```
 
-### 4. Horóscopo (`/v1/horoscopo`)
-Previsões diárias com números da sorte sugeridos.
-- **Query Param:** `data` (opcional).
-
-**Exemplo Curl:**
+### 5. Numerologia
+Gera números da sorte baseados no nome.
 ```bash
-curl -X GET "http://localhost:3002/v1/horoscopo?data=2024-05-20" \
-     -H "x-api-key: SUA_CHAVE"
-```
-
-### 5. Numerologia (`/v1/numerologia`)
-Calcula o número da sorte baseado no nome (Tabela Pitagórica).
-- **Query Param:** `nome` (obrigatório).
-
-**Exemplo Curl:**
-```bash
-curl -X GET "http://localhost:3002/v1/numerologia?nome=Antigravity" \
-     -H "x-api-key: SUA_CHAVE"
+curl "http://localhost:3002/v1/numerologia?nome=Antigravity" -H "x-api-key: SUA_CHAVE"
 ```
 
 ---
 
-## 🏗️ Estrutura do Projeto
+## 🤖 MCP Server (Model Context Protocol)
 
-- `src/server.ts`: Ponto de entrada (Fastify + MCP + Cron).
-- `src/config/loterias.ts`: Registro central de bancas e horários.
-- `src/mcp`: Lógica do servidor Model Context Protocol.
-- `src/scrapers`: Motores de raspagem (Global, GigaBicho, ResultadoFácil).
-- `src/services`: Webhooks, Cron, ScraperService e Numerologia.
-- `src/db.ts`: Conexão SQLite (Better-SQLite3).
+O servidor MCP está disponível via **SSE** no endpoint `/sse`.
+Para usar no Claude Desktop:
+```json
+{
+  "mcpServers": {
+    "jogodobicho": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-express", "http://seu-dominio.com/sse"]
+    }
+  }
+}
+```
+
+## 🛠️ Tecnologias
+- **Node.js 20+** & **TypeScript**
+- **Fastify** (API de alta performance)
+- **SQLite** (Better-SQLite3)
+- **Satori** (Renderização de imagens via HTML/SVG)
+- **Zod** (Validação e tipagem)

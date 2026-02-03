@@ -33,3 +33,11 @@ export function getBichoByGrupo(grupo: number) {
 export function getBichoByDezena(dezena: string) {
     return bichosData.find(b => b.dezenas.includes(dezena));
 }
+
+export function getBichoByNome(nome: string) {
+    const nomeNorm = nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return bichosData.find(b => {
+        const bichoNorm = b.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return bichoNorm === nomeNorm || bichoNorm.includes(nomeNorm);
+    });
+}

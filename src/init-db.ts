@@ -37,6 +37,7 @@ const schema = `
 
   CREATE TABLE IF NOT EXISTS webhooks (
     id TEXT PRIMARY KEY,
+    url TEXT NOT NULL UNIQUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `;

@@ -2,11 +2,15 @@ import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import db from '../db.js';
+import { RenderService } from '../services/RenderService.js';
 
 export async function resultadosRoutes(app: FastifyInstance) {
-    // Configuração para usar Zod
     const server = app.withTypeProvider<ZodTypeProvider>();
+    const renderService = new RenderService();
 
+    // ===============
+    // LISTAR RESULTADOS
+    // ===============
     server.get('/', {
         schema: {
             summary: 'Listar Resultados',
@@ -24,6 +28,8 @@ export async function resultadosRoutes(app: FastifyInstance) {
                     data: z.string(),
                     horario: z.string(),
                     loterica: z.string(),
+                    share_url: z.string().url(),
+                    image_url: z.string().url(),
                     premios: z.array(z.object({
                         posicao: z.number().int(),
                         milhar: z.string().min(3).max(5),
@@ -59,28 +65,83 @@ export async function resultadosRoutes(app: FastifyInstance) {
         const stmt = db.prepare(query);
         const resultados = stmt.all(...params) as any[];
 
-        // Buscar premios para cada resultado
-        // N+1 query simples (SQLite é rápido, mas poderiamos fazer JOIN)
-        // Vamos fazer JOIN.
-
-        // Na vdd melhor fazer query separada ou agrupar em memoria.
-        // Como estamos paginando resultados (poucos), query separada é ok.
-
         const response = [];
-
         const premiosStmt = db.prepare(`
-        SELECT posicao, milhar, grupo, bicho 
-        FROM premios WHERE resultado_id = ? ORDER BY posicao ASC
-    `);
+            SELECT posicao, milhar, grupo, bicho 
+            FROM premios WHERE resultado_id = ? ORDER BY posicao ASC
+        `);
+
+        // Obter URL base
+        const protocol = request.protocol;
+        const host = request.host; // Inclui porta se houver
+        const baseUrl = process.env.BASE_URL || `${protocol}://${host}`;
 
         for (const r of resultados) {
             const premios = premiosStmt.all(r.id);
             response.push({
                 ...r,
+                share_url: `${baseUrl}/v1/resultados/${r.id}/html`,
+                image_url: `${baseUrl}/v1/resultados/${r.id}/image`,
                 premios
             });
         }
 
         return response;
     });
+
+    // ===============
+    // ENDPOINT HTML (IFRAME)
+    // ===============
+    server.get('/:id/html', {
+        schema: { summary: 'Obter HTML do Resultado (Iframe)', tags: ['Compartilhamento'], params: z.object({ id: z.string().uuid() }) }
+    }, async (req, reply) => {
+        const { id } = req.params;
+        const resultado = getResultadoById(id);
+
+        if (!resultado) return reply.status(404).send("Resultado não encontrado.");
+
+        const html = await renderService.renderHtml(resultado);
+        reply.header('Content-Type', 'text/html');
+        return reply.send(html);
+    });
+
+    // ===============
+    // ENDPOINT IMAGEM (PNG)
+    // ===============
+    server.get('/:id/image', {
+        schema: { summary: 'Obter Imagem do Resultado (PNG)', tags: ['Compartilhamento'], params: z.object({ id: z.string().uuid() }) }
+    }, async (req, reply) => {
+        const { id } = req.params;
+        const resultado = getResultadoById(id);
+
+        if (!resultado) return reply.status(404).send("Resultado não encontrado.");
+
+        try {
+            const buffer = await renderService.renderImage(resultado);
+            reply.header('Content-Type', 'image/png');
+            return reply.send(buffer);
+        } catch (error) {
+            console.error(error);
+            return reply.status(500).send("Erro ao gerar imagem.");
+        }
+    });
+
+    // Helper para buscar resultado completo
+    function getResultadoById(id: string) {
+        const r = db.prepare(`
+            SELECT r.id, r.data, r.horario, l.nome as loterica
+            FROM resultados r
+            JOIN lotericas l ON r.loterica_slug = l.slug
+            WHERE r.id = ?
+        `).get(id) as any;
+
+        if (!r) return null;
+
+        const premios = db.prepare(`
+            SELECT posicao, milhar, grupo, bicho 
+            FROM premios WHERE resultado_id = ? ORDER BY posicao ASC
+        `).all(id);
+
+        return { ...r, premios };
+    }
 }

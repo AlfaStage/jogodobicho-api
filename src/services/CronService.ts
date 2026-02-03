@@ -1,9 +1,9 @@
-
 import { CronJob } from 'cron';
 import { ScraperService } from './ScraperService.js';
 import { HoroscopoScraper } from '../scrapers/HoroscopoScraper.js';
 import { ContentScraper } from '../scrapers/ContentScraper.js';
-import { LOTERIAS } from '../config/loterias.js';
+import { LOTERIAS, LotericaConfig } from '../config/loterias.js';
+import db from '../db.js';
 
 export class CronService {
     private scraperService = new ScraperService();
@@ -17,69 +17,80 @@ export class CronService {
     }
 
     start() {
-        // 1. Agendar Jobs Dinâmicos Baseados no Config
-        let configuredJobs = 0;
-
-        LOTERIAS.forEach(loteria => {
-            if (loteria.horarios && loteria.horarios.length > 0) {
-                loteria.horarios.forEach(horario => {
-                    // Simples parser HH:mm
-                    const [hStr, mStr] = horario.split(':');
-                    const h = parseInt(hStr);
-                    const m = parseInt(mStr);
-
-                    // Agendar para 30 minutos APÓS o fechamento (divulgação)
-                    // + 1 minuto de margem = 31 minutos após fechamento
-                    let targetH = h;
-                    let targetM = m + 31;
-
-                    if (targetM >= 60) {
-                        targetM -= 60;
-                        targetH += 1;
-                    }
-                    if (targetH >= 24) targetH -= 24;
-
-                    const cronPattern = `${targetM} ${targetH} * * * `;
-
-                    try {
-                        const job = new CronJob(cronPattern, () => {
-                            this.runScraper(`Agendado ${loteria.nome} (${horario})`);
-                        }, null, true, 'America/Sao_Paulo');
-                        this.jobs.push(job);
-                        configuredJobs++;
-                    } catch (err) {
-                        console.error(`[CronService] Erro ao agendar ${loteria.nome}: `, err);
-                    }
-                });
-            }
-        });
-
-        // 2. Job de Segurança (Fallback) a cada 30 minutos
-        // Caso algum horário seja perdido ou atrase muito
+        // 1. Smart Scraper Loop (A cada 2 minutos)
+        // Substitui varreduras fixas e fallback.
+        // Verifica o que está pendente e busca apenas o necessário.
         this.jobs.push(
-            new CronJob('*/30 * * * *', () => this.runScraper('Fallback 30min'), null, true, 'America/Sao_Paulo')
+            new CronJob('*/2 * * * *', () => this.runSmartScheduler(), null, true, 'America/Sao_Paulo')
         );
 
-        // 3. Horóscopo (06:00 DIARIO)
+        // 2. Horóscopo (06:00 DIARIO)
         this.jobs.push(
             new CronJob('0 6 * * *', () => this.runHoroscopo(), null, true, 'America/Sao_Paulo')
         );
 
-        // 4. Conteúdo (Semanal)
+        // 3. Conteúdo (Semanal)
         this.jobs.push(
             new CronJob('0 9 * * 1', () => this.runContent(), null, true, 'America/Sao_Paulo')
         );
 
-        console.log(`[CronService] Iniciado com ${configuredJobs} triggers de loterias + jobs de rotina.`);
+        console.log(`[CronService] Smart Scheduler iniciado (Ciclo de 2 min).`);
     }
 
-    private async runScraper(reason: string) {
-        console.log(`[CRON] Executando scraper: ${reason} `);
-        try {
-            await this.scraperService.executeGlobal();
-            console.log(`[CRON] Scraper finalizado.`);
-        } catch (error: any) {
-            console.error(`[CRON] Erro no scraper: ${error.message} `);
+    private async runSmartScheduler() {
+        const now = new Date();
+        const targets: LotericaConfig[] = [];
+
+        // Janela de busca: Sorteios ocorridos nas últimas 4 horas
+        // (Aumentei um pouco para garantir que atrasos longos sejam pegos)
+        const WINDOW_MS = 4 * 60 * 60 * 1000;
+
+        // Data string YYYY-MM-DD para consulta no banco
+        // Ajustando fuso para garantir dia correto do ponto de vista do usuário (Brasil)
+        // new Date() já retorna com offset local se o OS estiver configurado, mas vamos garantir.
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const dataHoje = `${year}-${month}-${day}`;
+
+        // Preparar statement para checagem rápida
+        const checkResult = db.prepare('SELECT id FROM resultados WHERE loterica_slug = ? AND data = ? AND horario = ?');
+
+        for (const loteria of LOTERIAS) {
+            if (!loteria.horarios) continue;
+
+            let isPending = false;
+
+            for (const horario of loteria.horarios) {
+                // Parse horario HH:mm
+                const [h, m] = horario.split(':').map(Number);
+                const drawTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0);
+
+                // Se sorteio já passou e está dentro da janela
+                if (drawTime <= now && (now.getTime() - drawTime.getTime()) < WINDOW_MS) {
+
+                    // Verificar se já temos resultado
+                    const exists = checkResult.get(loteria.slug, dataHoje, horario);
+
+                    if (!exists) {
+                        // Não temos resultado ainda! Adicionar aos alvos.
+                        // Mas só adicionamos a loteria uma vez na lista
+                        isPending = true;
+                        // console.log(`[SmartScheduler] Pendente: ${loteria.nome} das ${horario}`);
+                    }
+                }
+            }
+
+            if (isPending) {
+                targets.push(loteria);
+            }
+        }
+
+        if (targets.length > 0) {
+            console.log(`[SmartScheduler] ${targets.length} lotéricas com sorteios pendentes. Iniciando scraping direcionado...`);
+            await this.scraperService.executeTargeted(targets);
+        } else {
+            // console.log(`[SmartScheduler] Todos os sorteios recentes já estão atualizados.`);
         }
     }
 

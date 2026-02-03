@@ -1,0 +1,33 @@
+✅ Tabela horoscopo_diario verificada/criada
+🔄 Executando scraper de horóscopo...
+
+[HoroscopoScraper] Iniciando varredura de horóscopo...
+[HoroscopoScraper] Áries: 14 números salvos
+[HoroscopoScraper] Touro: 14 números salvos
+[HoroscopoScraper] Gêmeos: 14 números salvos
+[HoroscopoScraper] Câncer: 14 números salvos
+[HoroscopoScraper] Leão: 14 números salvos
+[HoroscopoScraper] Virgem: 14 números salvos
+[HoroscopoScraper] Libra: 14 números salvos
+[HoroscopoScraper] Escorpião: 14 números salvos
+[HoroscopoScraper] Sagitário: 14 números salvos
+[HoroscopoScraper] Capricórnio: 14 números salvos
+[HoroscopoScraper] Aquário: 14 números salvos
+[HoroscopoScraper] Peixes: 14 números salvos
+[HoroscopoScraper] Varredura finalizada.
+
+📊 Verificando dados salvos:
+  Aquário: 06, 10, 32, 38, 41, 42, 50, 52, 101, 554, 885, 2626, 4108, 8012
+  Capricórnio: 04, 09, 13, 31, 41, 49, 53, 58, 092, 400, 867, 3250, 5722, 7541
+  Câncer: 05, 09, 15, 29, 34, 53, 58, 60, 144, 465, 802, 1543, 3453, 7973
+  Escorpião: 04, 17, 23, 24, 31, 32, 53, 60, 254, 391, 782, 1493, 4092, 9275
+  Gêmeos: 10, 13, 15, 23, 34, 50, 55, 59, 268, 366, 908, 0864, 4401, 9986
+  Leão: 08, 17, 24, 32, 41, 46, 51, 57, 168, 579, 961, 2642, 3640, 9101
+  Libra: 04, 11, 18, 21, 26, 36, 47, 60, 189, 476, 901, 1212, 5517, 7248
+  Peixes: 25, 26, 27, 32, 46, 47, 53, 58, 258, 495, 958, 2077, 4938, 7005
+  Sagitário: 16, 37, 39, 42, 46, 49, 50, 59, 132, 374, 919, 0167, 4922, 7209
+  Touro: 07, 15, 20, 25, 27, 30, 35, 43, 267, 511, 816, 1421, 5114, 9265
+  Virgem: 15, 18, 19, 23, 31, 41, 54, 55, 327, 525, 763, 0773, 6081, 7942
+  Áries: 02, 23, 26, 27, 30, 42, 58, 60, 067, 367, 842, 0910, 4773, 8033
+
+✅ 12 signos salvos para hoje.

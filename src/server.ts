@@ -54,6 +54,8 @@ app.addHook('onRequest', async (request, reply) => {
     if (
         request.url.startsWith('/docs') ||
         request.url.startsWith('/health') ||
+        request.url.startsWith('/admin') || // Permitir dashboard interno
+        request.url.startsWith('/live') || // Permitir página ao vivo
         request.url === '/favicon.ico'
     ) return;
 
@@ -69,8 +71,12 @@ app.addHook('onRequest', async (request, reply) => {
 // Registrar rotas
 import { numerologiaRoutes } from './routes/numerologia.js';
 import { webhooksRoutes } from './routes/webhooks.js';
+import { adminRoutes } from './routes/admin.js';
 import { registerMcpRoutes } from './mcp/fastify-mcp.js';
 import { CronService } from './services/CronService.js';
+import { StartupSyncService } from './services/StartupSyncService.js';
+import fs from 'fs';
+import path from 'path';
 
 app.register(registerMcpRoutes); // Unificado
 app.register(resultadosRoutes, { prefix: '/v1/resultados' });
@@ -80,9 +86,28 @@ app.register(horoscopoRoutes, { prefix: '/v1/horoscopo' });
 app.register(numerologiaRoutes, { prefix: '/v1/numerologia' });
 app.register(webhooksRoutes, { prefix: '/v1/webhooks' });
 app.register(comoJogarRoutes, { prefix: '/v1/como-jogar' });
+app.register(adminRoutes, { prefix: '/admin' });
 
 app.get('/health', async () => {
     return { status: 'ok', uptime: process.uptime() };
+});
+
+app.get('/live', async (req, reply) => {
+    const html = fs.readFileSync(path.resolve('public/live.html'), 'utf-8');
+    reply.header('Content-Type', 'text/html');
+    return reply.send(html);
+});
+
+// Servir CSS
+app.get('/css/:file', async (req, reply) => {
+    const { file } = req.params as { file: string };
+    try {
+        const css = fs.readFileSync(path.resolve(`public/css/${file}`), 'utf-8');
+        reply.header('Content-Type', 'text/css');
+        return reply.send(css);
+    } catch {
+        return reply.status(404).send('CSS Not Found');
+    }
 });
 
 const start = async () => {
@@ -93,6 +118,10 @@ const start = async () => {
         // Iniciar Cron
         const cron = new CronService();
         cron.start();
+
+        // Sincronização Inicial (não bloqueante)
+        const syncService = new StartupSyncService();
+        syncService.sync().catch(err => console.error('[StartupSyncService] Erro na sincronização inicial:', err));
 
         console.log(`Server running at http://localhost:${port}`);
         console.log(`Docs running at http://localhost:${port}/docs`);

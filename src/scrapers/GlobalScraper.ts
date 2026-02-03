@@ -2,7 +2,7 @@ import { ScraperBase } from './ScraperBase.js';
 import db from '../db.js';
 import { randomUUID } from 'crypto';
 import { WebhookService } from '../services/WebhookService.js';
-import { LOTERIAS } from '../config/loterias.js';
+import { LOTERIAS, LotericaConfig } from '../config/loterias.js';
 
 export class GlobalScraper extends ScraperBase {
     private webhookService = new WebhookService();
@@ -11,11 +11,11 @@ export class GlobalScraper extends ScraperBase {
         super('https://www.ojogodobicho.com/resultados.htm');
     }
 
-    async execute(): Promise<void> {
-        console.log('[GlobalScraper] Iniciando varredura global...');
+    async execute(targets: LotericaConfig[] = LOTERIAS): Promise<void> {
+        console.log(`[GlobalScraper] Iniciando varredura global (${targets.length} alvos)...`);
 
-        // Filtrar apenas lotéricas que têm URL definida
-        const urlsToScrape = LOTERIAS
+        // Filtrar apenas lotéricas alvo que têm URL definida
+        const urlsToScrape = targets
             .filter(l => l.url && l.url.length > 0)
             .map(l => l.url!);
 
@@ -126,6 +126,12 @@ export class GlobalScraper extends ScraperBase {
             const insertPremio = db.prepare('INSERT INTO premios (id, resultado_id, posicao, milhar, grupo, bicho) VALUES (?, ?, ?, ?, ?, ?)');
 
             for (const [horario, premios] of resultadosMap.entries()) {
+                // Validação mínima: Jogo do Bicho tem que ter pelo menos 5 prêmios principais
+                if (premios.length < 5) {
+                    // console.warn(`[GlobalScraper] Ignorando resultado incompleto de ${horario}: apenas ${premios.length} prêmios.`);
+                    continue;
+                }
+
                 db.transaction(() => {
                     let res = getResultadoId.get(dataIso, horario, lotericaSlug) as { id: string };
                     if (!res) {

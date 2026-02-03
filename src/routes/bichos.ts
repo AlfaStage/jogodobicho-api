@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { bichosData, getBichoByDezena, getBichoByGrupo } from '../utils/bichos.js';
+import { bichosData, getBichoByDezena, getBichoByGrupo, getBichoByNome } from '../utils/bichos.js';
 
 export async function bichosRoutes(app: FastifyInstance) {
     const server = app.withTypeProvider<ZodTypeProvider>();
@@ -65,6 +65,12 @@ export async function bichosRoutes(app: FastifyInstance) {
 
         if (matches.length > 0) {
             return matches;
+        }
+
+        // 3. Verificar se é uma busca por nome (ex: cavalo, elefante)
+        const bichoPorNome = getBichoByNome(query);
+        if (bichoPorNome) {
+            return [bichoPorNome];
         }
 
         return reply.status(404).send(null);

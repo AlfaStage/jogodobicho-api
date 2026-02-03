@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Resultado {{LOTERICA}} - {{HORARIO}}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* =============================================
+           VARIÁVEIS CSS - EDITE AQUI!
+           Mude um valor aqui e ele mudará em tudo,
+           tanto no Preview quanto na Imagem PNG.
+           ============================================= */
+        :root {
+            /* Container Principal (Largura Expandida para 350px) */
+            --container-width: 350px;
+            --container-bg: #ffffff;
+            --container-radius: 0px;
+            --container-border: none;
+
+            /* Título (Nome da Lotérica) */
+            --title-bg: #f8f9fa;
+            --title-color: #1a1a1a;
+            --title-font-size: 26px;
+            --title-padding: 10px 0;
+
+            /* Subtítulo (Data e Horário) */
+            --subtitle-bg: #f8f9fa;
+            --subtitle-color: #1a1a1a;
+            --subtitle-font-size: 18px;
+            --subtitle-padding: 10px 0;
+
+            /* Cabeçalho da Tabela */
+            --header-bg: #222222;
+            --header-color: #ffffff;
+            --header-font-size: 14px;
+
+            /* Linhas de Dados */
+            --row-bg: #ffffff;
+            --row-bg-even: #fafafa;
+            --row-border: #eeeeee;
+
+            /* Colunas (Cores e Fontes) */
+            --col-premio-color: #666666;
+            --col-milhar-color: #000000;
+            --col-grupo-color: #666666;
+            --col-animal-color: #444444;
+
+            --font-size-base: 16px;
+            --font-size-milhar: 18px;
+            --cell-padding: 14px 4px;
+
+            /* Larguras das Colunas (Soma Exata = 350px) */
+            --col-p-width: 70px;
+            --col-m-width: 110px;
+            --col-g-width: 60px;
+            --col-a-width: 110px;
+        }
+
+        /* Estilos Web (Para o navegador) */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: transparent;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        /* Classes auxiliares para o Web Preview */
+        .container {
+            display: flex;
+            flex-direction: column;
+            width: var(--container-width);
+            background-color: var(--container-bg);
+            border-radius: var(--container-radius);
+            border: none;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        .title {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-weight: 700;
+            padding: var(--title-padding);
+            background-color: var(--title-bg);
+            font-size: var(--title-font-size);
+            color: var(--title-color);
+            border-bottom: 1px solid var(--row-border);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .subtitle {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-weight: 700;
+            padding: var(--subtitle-padding);
+            background-color: var(--subtitle-bg);
+            font-size: var(--subtitle-font-size);
+            color: var(--subtitle-color);
+            border-bottom: 1px solid var(--row-border);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .table-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .header {
+            display: flex;
+            background-color: var(--header-bg);
+            color: var(--header-color);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .col {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: var(--cell-padding);
+            text-align: center;
+            font-size: var(--font-size-base);
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body
+    style="display: flex; justify-content: center; align-items: flex-start; background-color: transparent; margin: 0; padding: 0;">
+
+    <div class="container"
+        style="display: flex; flex-direction: column; width: 350px; background-color: #ffffff; overflow: hidden; box-sizing: border-box; border: none; border-radius: 0;">
+
+        <!-- Título -->
+        <div class="title"
+            style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-weight: 700; padding: 10px 0; background-color: #f8f9fa; font-size: 26px; color: #1a1a1a; border-bottom: 1px solid #eeeeee; width: 350px; box-sizing: border-box;">
+            {{LOTERICA}}
+        </div>
+
+        <!-- Subtítulo -->
+        <div class="subtitle"
+            style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-weight: 700; padding: 10px 0; background-color: #f8f9fa; font-size: 18px; color: #1a1a1a; border-bottom: 1px solid #eeeeee; width: 350px; box-sizing: border-box;">
+            {{DATA}} - {{HORARIO}}
+        </div>
+
+        <div class="table-container"
+            style="display: flex; flex-direction: column; width: 350px; box-sizing: border-box;">
+
+            <!-- Cabeçalho (70 + 110 + 60 + 110 = 350px) -->
+            <div class="header"
+                style="display: flex; flex-direction: row; width: 350px; background-color: #222222; box-sizing: border-box;">
+                <div
+                    style="display: flex; width: 70px; padding: 14px 4px; justify-content: center; align-items: center; text-align: center; font-weight: 700; font-size: 14px; color: #ffffff; text-transform: uppercase; box-sizing: border-box;">
+                    Prêmio</div>
+                <div
+                    style="display: flex; width: 110px; padding: 14px 4px; justify-content: center; align-items: center; text-align: center; font-weight: 700; font-size: 14px; color: #ffffff; text-transform: uppercase; box-sizing: border-box;">
+                    Milhar</div>
+                <div
+                    style="display: flex; width: 60px; padding: 14px 4px; justify-content: center; align-items: center; text-align: center; font-weight: 700; font-size: 14px; color: #ffffff; text-transform: uppercase; box-sizing: border-box;">
+                    Grupo</div>
+                <div
+                    style="display: flex; width: 110px; padding: 14px 4px; justify-content: center; align-items: center; text-align: center; font-weight: 700; font-size: 14px; color: #ffffff; text-transform: uppercase; box-sizing: border-box;">
+                    Animal</div>
+            </div>
+
+            <!-- Corpo -->
+            <div class="body" style="display: flex; flex-direction: column; width: 350px; box-sizing: border-box;">
+                {{PREMIOS}}
+            </div>
+
+        </div>
+    </div>
+</body>
+
+</html>

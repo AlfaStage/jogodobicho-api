@@ -107,6 +107,7 @@ export const LOTERIAS: LotericaConfig[] = [
         id: 'ba-maluca',
         slug: 'maluca-bahia',
         nome: 'Maluca Bahia',
+        urlGigaBicho: 'https://www.gigabicho.com.br/jogo-do-bicho-bahia/',
         urlResultadoFacil: 'https://www.resultadofacil.com.br/resultado-do-jogo-do-bicho/ba',
         horarios: ['10:00', '12:00', '15:00', '19:00', '21:00']
     },

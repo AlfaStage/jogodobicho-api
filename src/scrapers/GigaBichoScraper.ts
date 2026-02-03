@@ -2,7 +2,7 @@ import { ScraperBase } from './ScraperBase.js';
 import db from '../db.js';
 import { randomUUID } from 'crypto';
 import { WebhookService } from '../services/WebhookService.js';
-import { LOTERIAS } from '../config/loterias.js';
+import { LOTERIAS, LotericaConfig } from '../config/loterias.js';
 import * as cheerio from 'cheerio';
 
 export class GigaBichoScraper extends ScraperBase {
@@ -12,39 +12,37 @@ export class GigaBichoScraper extends ScraperBase {
         super('https://www.gigabicho.com.br/');
     }
 
-    async execute(targetSlug?: string): Promise<void> {
-        console.log('[GigaBichoScraper] Iniciando varredura...');
+    async execute(targets: LotericaConfig[] = LOTERIAS, targetSlug?: string): Promise<void> {
+        console.log(`[GigaBichoScraper] Iniciando varredura (${targets.length} alvos)...`);
 
-        let loteriasAlvo = LOTERIAS.filter(l => l.urlGigaBicho);
+        // Pegar URLs do GigaBicho dos alvos
+        let configs = targets.filter(l => l.urlGigaBicho);
 
         if (targetSlug) {
-            loteriasAlvo = loteriasAlvo.filter(l => l.slug === targetSlug);
+            configs = configs.filter(l => l.slug === targetSlug);
         }
 
-        console.log(`[GigaBichoScraper] Loterias encontradas para processar: ${loteriasAlvo.length}`);
+        const uniqueUrls = [...new Set(configs.map(l => l.urlGigaBicho!))];
 
-        for (const loteria of loteriasAlvo) {
+        console.log(`[GigaBichoScraper] URLs únicas para processar: ${uniqueUrls.length}`);
+
+        for (const url of uniqueUrls) {
             try {
-                if (loteria.urlGigaBicho) {
-                    await this.scrapeUrl(loteria.urlGigaBicho, loteria.slug);
-                }
+                await this.scrapeUrl(url);
             } catch (error) {
-                console.error(`[GigaBichoScraper] Erro ao processar ${loteria.slug}:`, error);
+                console.error(`[GigaBichoScraper] Erro ao processar ${url}:`, error);
             }
         }
 
         console.log('[GigaBichoScraper] Varredura finalizada.');
     }
 
-    private async scrapeUrl(url: string, slug: string): Promise<void> {
+    private async scrapeUrl(url: string): Promise<void> {
         const $ = await this.fetchHtml(url);
         if (!$) return;
 
         const rawHtml = $.html();
-        // Dividir por H3 que é o divisor padrão do GigaBicho para sorteios
         const parts = rawHtml.split(/<h3[^>]*>/i);
-
-        console.log(`[GigaBichoScraper] ${slug}: Dividido em ${parts.length} partes.`);
 
         for (let i = 1; i < parts.length; i++) {
             const part = parts[i];
@@ -54,6 +52,15 @@ export class GigaBichoScraper extends ScraperBase {
             const titulo = cheerio.load(partHeaderMatch[1]).text().trim();
             const content = part.substring(partHeaderMatch[0].length);
             const $part = cheerio.load(content);
+
+            // Tentar encontrar qual lotérica esse título se refere
+            // Ex: "Sorteio 10 horas Bahia" -> Bahia
+            // Ex: "Sorteio 10 horas Bahia Maluca" -> Bahia Maluca
+            const loteria = this.detectLoteria(titulo, url);
+            if (!loteria) {
+                // console.log(`[GigaBichoScraper] Título não reconhecido: "${titulo}"`);
+                continue;
+            }
 
             const horarioMatch = titulo.match(/(\d{1,2})[h:]?(\d{2})?\s*(horas)?/i);
             if (!horarioMatch) continue;
@@ -88,7 +95,7 @@ export class GigaBichoScraper extends ScraperBase {
                 }
 
                 if (captureStage === 1) {
-                    if (/^\d{3,4}$/.test(line)) {
+                    if (/^\d{3,5}$/.test(line)) { // Ajustado para aceitar Soma (5 dígitos)
                         buffer.milhar = line;
                         captureStage = 2;
                     } else if (line === '--') {
@@ -112,9 +119,33 @@ export class GigaBichoScraper extends ScraperBase {
             });
 
             if (premios.length > 0) {
-                this.saveResult(slug, dataIso, horarioFormatado, premios);
+                this.saveResult(loteria.slug, dataIso, horarioFormatado, premios);
             }
         }
+    }
+
+    private detectLoteria(titulo: string, url: string): any {
+        const tituloLower = titulo.toLowerCase();
+
+        // Buscar loterias que usam essa URL
+        const possiveis = LOTERIAS.filter(l => l.urlGigaBicho === url);
+
+        if (possiveis.length === 1) return possiveis[0];
+
+        // Se houver mais de uma (ex: Bahia), tentar diferenciar pelo título
+        for (const loteria of possiveis) {
+            // Se o nome da lotérica (ex: Maluca Bahia) está no título, é ela
+            // Ajuste: remover acentos e ser flexível
+            const nomeLoteria = loteria.nome.toLowerCase()
+                .replace('bahia', '').trim(); // Removemos "Bahia" para bater em "Maluca" ou vazio
+
+            if (nomeLoteria && tituloLower.includes(nomeLoteria)) {
+                return loteria;
+            }
+        }
+
+        // Default: retornar a primeira se não houver distinção clara
+        return possiveis.find(l => !l.nome.toLowerCase().includes('maluca')) || possiveis[0];
     }
 
     private getGrupoFromMilhar(milhar: string): number {

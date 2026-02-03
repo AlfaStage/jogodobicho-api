@@ -1,85 +1,86 @@
-import axios from 'axios';
-import * as cheerio from 'cheerio';
+import { ScraperBase } from './ScraperBase.js';
 import db from '../db.js';
-import { randomUUID } from 'crypto';
 
 const SIGNOS = [
-    'aries', 'touro', 'gemeos', 'cancer', 'leao', 'virgem',
-    'libra', 'escorpiao', 'sagitario', 'capricornio', 'aquario', 'peixes'
+    { nome: 'Áries', slug: 'aries', url: 'https://www.ojogodobicho.com/aries.htm' },
+    { nome: 'Touro', slug: 'touro', url: 'https://www.ojogodobicho.com/touro.htm' },
+    { nome: 'Gêmeos', slug: 'gemeos', url: 'https://www.ojogodobicho.com/gemeos.htm' },
+    { nome: 'Câncer', slug: 'cancer', url: 'https://www.ojogodobicho.com/cancer.htm' },
+    { nome: 'Leão', slug: 'leao', url: 'https://www.ojogodobicho.com/leao.htm' },
+    { nome: 'Virgem', slug: 'virgem', url: 'https://www.ojogodobicho.com/virgem.htm' },
+    { nome: 'Libra', slug: 'libra', url: 'https://www.ojogodobicho.com/libra.htm' },
+    { nome: 'Escorpião', slug: 'escorpiao', url: 'https://www.ojogodobicho.com/escorpiao.htm' },
+    { nome: 'Sagitário', slug: 'sagitario', url: 'https://www.ojogodobicho.com/sagitario.htm' },
+    { nome: 'Capricórnio', slug: 'capricornio', url: 'https://www.ojogodobicho.com/capricornio.htm' },
+    { nome: 'Aquário', slug: 'aquario', url: 'https://www.ojogodobicho.com/aquario.htm' },
+    { nome: 'Peixes', slug: 'peixes', url: 'https://www.ojogodobicho.com/peixes.htm' }
 ];
 
-export class HoroscopoScraper {
-    async execute() {
-        console.log('Iniciando raspagem de horóscopo...');
+export class HoroscopoScraper extends ScraperBase {
+    constructor() {
+        super('https://www.ojogodobicho.com/');
+    }
+
+    async execute(): Promise<void> {
+        console.log('[HoroscopoScraper] Iniciando varredura de horóscopo...');
         const today = new Date().toISOString().split('T')[0];
 
-        // Prepare statements
-        const insertStmt = db.prepare(`
-            INSERT INTO horoscopo_diario (id, data, signo, texto, numeros)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(data, signo) DO UPDATE SET
-            texto = excluded.texto,
-            numeros = excluded.numeros
-        `);
+        // Verificar se já processamos hoje (são 12 signos)
+        const check = db.prepare('SELECT count(*) as count FROM horoscopo_diario WHERE data = ?').get(today) as { count: number };
+
+        if (check && check.count >= 12) {
+            console.log(`[HoroscopoScraper] Horóscopo de hoje (${today}) já está completo (${check.count} registros). Pulando.`);
+            return;
+        }
 
         for (const signo of SIGNOS) {
             try {
-                const url = `https://www.ojogodobicho.com/${signo}.htm`;
-                const { data: html } = await axios.get(url, {
-                    responseType: 'arraybuffer',
-                    headers: { 'User-Agent': 'Mozilla/5.0' }
-                });
-
-                const decoder = new TextDecoder('iso-8859-1'); // Site antigo costuma ser latin1
-                const textHtml = decoder.decode(html);
-                const $ = cheerio.load(textHtml);
-
-                // Extração baseada em heurística do site (pode precisar de ajustes)
-                // O texto costuma estar em parágrafos após o título 
-                // e os números em uma lista ou abaixo de "Números da sorte"
-
-                // Texto principal: Pegar o primeiro parágrafo relevante
-                // O site tem estrutura antiga, muitas vezes texto solto ou em <p>
-                let texto = $('p').first().text().trim();
-                // Tenta ser mais específico se possível
-                $('p').each((i, el) => {
-                    const t = $(el).text().trim();
-                    // Ignora textos curtos ou de menu
-                    if (t.length > 50 && !t.includes('Copyright')) {
-                        texto = t;
-                        return false; // break
-                    }
-                });
-
-                // Números da sorte
-                // Geralmente estão em uma lista <ul> ou após "Números da sorte"
-                const numeros: string[] = [];
-
-                // Procura por padrão visual ou texto
-                $('body').text().split('\n').forEach(line => {
-                    if (line.includes('Números da sorte')) {
-                        // Lógica de fallback se não achar estruturado
-                    }
-                });
-
-                // Tentativa direta em listas (comum no site)
-                $('li').each((i, el) => {
-                    const txt = $(el).text().trim();
-                    if (/^\d+$/.test(txt)) { // Apenas dígitos
-                        numeros.push(txt);
-                    }
-                });
-
-                // Filtrar números inválidos (ex: menu items que parecem numeros)
-                const luckyNumbers = numeros.filter(n => n.length <= 4).slice(0, 10).join(', ');
-
-                console.log(`Signo: ${signo} | Números: ${luckyNumbers}`);
-
-                insertStmt.run(randomUUID(), today, signo, texto, luckyNumbers);
-
-            } catch (error: any) {
-                console.error(`Erro ao raspar signo ${signo}:`, error.message);
+                await this.scrapeSigno(signo, today);
+            } catch (error) {
+                console.error(`[HoroscopoScraper] Erro ao buscar ${signo.nome}:`, error);
             }
+        }
+
+        console.log('[HoroscopoScraper] Varredura finalizada.');
+    }
+
+    private async scrapeSigno(signo: typeof SIGNOS[0], data: string): Promise<void> {
+        const $ = await this.fetchHtml(signo.url);
+        if (!$) return;
+
+        // Buscar os números da sorte
+        const numeros: string[] = [];
+        const text = $('body').text();
+
+        // Procurar seção "Números da sorte para hoje"
+        const numerosMatch = text.match(/Números da sorte para hoje[\s\S]*?(?=Os arianos|Os taurinos|Os geminianos|Os cancerianos|Os leoninos|Os virginianos|Os librianos|Os escorpianos|Os sagitarianos|Os capricornianos|Os aquarianos|Os piscianos|Publicidade)/i);
+
+        if (numerosMatch) {
+            const nums = numerosMatch[0].match(/\d{2,4}/g);
+            if (nums) {
+                numeros.push(...nums.slice(0, 14)); // Até 14 números
+            }
+        }
+
+        // Buscar descrição do signo
+        const descMatch = text.match(/Características do signo de \w+\s*([\s\S]*?)(?=Números da sorte|$)/i);
+        const descricao = descMatch ? descMatch[1].trim().substring(0, 500) : '';
+
+        if (numeros.length > 0) {
+            // Salvar no banco
+            const stmt = db.prepare(`
+                INSERT OR REPLACE INTO horoscopo_diario (signo, texto, numeros, data)
+                VALUES (?, ?, ?, ?)
+            `);
+
+            stmt.run(
+                signo.nome,
+                descricao,
+                numeros.join(', '),
+                data
+            );
+
+            console.log(`[HoroscopoScraper] ${signo.nome}: ${numeros.length} números salvos`);
         }
     }
 }

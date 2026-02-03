@@ -12,9 +12,9 @@ export async function lotericasRoutes(app: FastifyInstance) {
             tags: ['Lotericas'],
             response: {
                 200: z.array(z.object({
-                    slug: z.string(),
-                    nome: z.string(),
-                }))
+                    slug: z.string().describe('Slug único da banca (ex: pt-rio)'),
+                    nome: z.string().describe('Nome legível da banca (ex: PT Rio / Deu no Poste)'),
+                })).describe('Lista de bancas disponíveis')
             }
         }
     }, async () => {

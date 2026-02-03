@@ -86,3 +86,24 @@ A empresa deste importante estabelecimento de criação do benemérito barão de
 (Mantendo o texto histórico original abaixo para preservação...)
 
 ... [Conteúdo histórico original mantido/preservado] ...
+
+## Dicas de Apostas
+
+Algumas estratégias populares entre os apostadores:
+
+### 1. Jogar no Sonho
+A tradição diz que sonhos têm significados numéricos. Se sonhou com água, consulte a tabela de sonhos para saber qual bicho apostar.
+
+### 2. Apostar em Dezenas Atrasadas
+Alguns apostadores acompanham quais dezenas não saem há tempo e apostam nelas, acreditando que estão "devendo".
+
+### 3. Diversificar as Modalidades
+Ao invés de apostar alto em uma única milhar, considere distribuir o valor entre grupo, dezena e centena para aumentar as chances de retorno.
+
+### 4. Definir um Limite
+Estabeleça um valor máximo para apostar por dia ou semana e respeite esse limite.
+
+### 5. Acompanhar os Horários
+Cada horário de sorteio pode ter padrões diferentes. Observe os resultados anteriores.
+
+*Aviso: Estas são apenas observações folclóricas. O jogo do bicho é ilegal em território brasileiro e envolve risco financeiro.*

@@ -23,6 +23,7 @@ export class NumerologyService {
         }
 
         const luckyNumber = this.reduceToSingleDigit(sum);
+        const suggestions = this.generateSuggestions(luckyNumber, sum);
 
         return {
             input: name,
@@ -30,7 +31,8 @@ export class NumerologyService {
             sum,
             luckyNumber,
             details: details.join(', '),
-            meaning: this.getMeaning(luckyNumber)
+            meaning: this.getMeaning(luckyNumber),
+            sugestoes: suggestions
         };
     }
 
@@ -54,5 +56,53 @@ export class NumerologyService {
             9: "Humanitarismo, compaixão, generosidade."
         };
         return meanings[num] || "Número mestre ou indefinido.";
+    }
+
+    private generateSuggestions(luckyNumber: number, sum: number): {
+        dezenas: string[];
+        centenas: string[];
+        milhares: string[];
+        grupo: { numero: number; bicho: string };
+    } {
+        // Gerar dezenas baseadas no número da sorte (4 dezenas do grupo)
+        const baseGrupo = Math.ceil(luckyNumber / 4) || 1;
+        const grupoFinal = ((luckyNumber - 1) % 25) + 1;
+
+        // Os bichos do jogo
+        const bichos = ['Avestruz', 'Águia', 'Burro', 'Borboleta', 'Cachorro', 'Cabra', 'Carneiro', 'Camelo', 'Cobra', 'Coelho', 'Cavalo', 'Elefante', 'Galo', 'Gato', 'Jacaré', 'Leão', 'Macaco', 'Porco', 'Pavão', 'Peru', 'Touro', 'Tigre', 'Urso', 'Veado', 'Vaca'];
+
+        // Dezenas do grupo baseado no número da sorte
+        const grupoBase = luckyNumber <= 25 ? luckyNumber : ((luckyNumber - 1) % 25) + 1;
+        const startDezena = (grupoBase - 1) * 4 + 1;
+        const dezenas = [
+            String(startDezena % 100).padStart(2, '0'),
+            String((startDezena + 1) % 100).padStart(2, '0'),
+            String((startDezena + 2) % 100).padStart(2, '0'),
+            String((startDezena + 3) % 100).padStart(2, '0')
+        ];
+
+        // Centenas baseadas na soma + variações
+        const centenas = [
+            String(sum % 1000).padStart(3, '0'),
+            String((sum + luckyNumber) % 1000).padStart(3, '0'),
+            String((luckyNumber * 100 + sum % 100) % 1000).padStart(3, '0')
+        ];
+
+        // Milhares baseados na combinação
+        const milhares = [
+            String(sum).padStart(4, '0').slice(-4),
+            String(luckyNumber * 1000 + sum % 1000).padStart(4, '0').slice(-4),
+            String(((sum % 100) * 100) + luckyNumber).padStart(4, '0')
+        ];
+
+        return {
+            dezenas,
+            centenas,
+            milhares,
+            grupo: {
+                numero: grupoBase,
+                bicho: bichos[grupoBase - 1] || 'Avestruz'
+            }
+        };
     }
 }

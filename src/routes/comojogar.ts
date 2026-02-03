@@ -51,6 +51,7 @@ export async function comoJogarRoutes(app: FastifyInstance) {
         { path: '/tabela', header: 'Tabela de Grupos e Dezenas', summary: 'Tabela Completa de Animais' },
         { path: '/modalidades', header: 'Modalidades de Aposta', summary: 'Diferentes formas de apostar' },
         { path: '/historia', header: 'Curiosidades Históricas', summary: 'História do Jogo do Bicho' },
+        { path: '/dicas', header: 'Dicas de Apostas', summary: 'Dicas e estratégias para apostas' },
     ];
 
     for (const section of sections) {

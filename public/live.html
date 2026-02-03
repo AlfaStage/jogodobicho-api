@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Resultados Ao Vivo - Jogo do Bicho</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/admin-theme.css">
+    <style>
+        /* Grids Específicos do Live */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+            padding: 20px 0;
+        }
+
+        .result-card {
+            background: var(--surface-color);
+            border: var(--glass-border);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            position: relative;
+            aspect-ratio: 9/12;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .result-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+            border-color: rgba(187, 134, 252, 0.3);
+        }
+
+        .result-card iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #fff;
+        }
+
+        .loterica-title {
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .loading-container {
+            width: 100%;
+            text-align: center;
+            padding: 50px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div
+                style="width: 10px; height: 10px; background: #00ff00; border-radius: 50%; box-shadow: 0 0 10px #00ff00;">
+            </div>
+            <h1>Resultados Ao Vivo</h1>
+        </div>
+        <div class="date-display" id="currentDate" style="color: var(--text-secondary); font-weight: 500;">Carregando...
+        </div>
+    </header>
+
+    <div class="container">
+        <div id="grid-container">
+            <div class="loading-container">
+                <p>Buscando os últimos sorteios...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CONTAINER = document.getElementById('grid-container');
+        const DATE_DISPLAY = document.getElementById('currentDate');
+
+        function getTodayString() {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function formatDateFriendly(dateStr) {
+            const [y, m, d] = dateStr.split('-');
+            return `${d}/${m}/${y}`;
+        }
+
+        async function updateResultsSmart() {
+            const today = getTodayString();
+            DATE_DISPLAY.innerText = formatDateFriendly(today);
+
+            try {
+                const res = await fetch(`/v1/resultados?data=${today}`);
+                const data = await res.json();
+
+                if (data.length === 0) {
+                    const currentLoading = CONTAINER.querySelector('.loading-container');
+                    if (!currentLoading) {
+                        CONTAINER.innerHTML = '<div class="loading-container"><p>Nenhum sorteio realizado hoje (ainda).</p></div>';
+                    }
+                    return;
+                }
+
+                // Verificar se a quantidade de itens mudou antes de redesenhar
+                // (Otimização básica para evitar flicker desnecessário em polling curto)
+                const currentCards = document.querySelectorAll('iframe').length;
+                if (currentCards === data.length) return;
+
+                // Agrupar por Lotérica
+                const grouped = data.reduce((acc, curr) => {
+                    const name = curr.loterica || 'Outras';
+                    if (!acc[name]) acc[name] = [];
+                    acc[name].push(curr);
+                    return acc;
+                }, {});
+
+                const sortedKeys = Object.keys(grouped).sort();
+
+                CONTAINER.innerHTML = ''; // Limpar tudo para redesenhar agrupado
+
+                sortedKeys.forEach(lotericaName => {
+                    const groupSection = document.createElement('div');
+                    groupSection.style.marginBottom = '40px';
+
+                    const title = document.createElement('h2');
+                    title.className = 'loterica-title';
+                    title.innerText = lotericaName;
+                    groupSection.appendChild(title);
+
+                    const cardsGrid = document.createElement('div');
+                    cardsGrid.className = 'results-grid';
+
+                    // Ordenar horarios decrescente (mais recentes primeiro)
+                    const results = grouped[lotericaName].sort((a, b) => b.horario.localeCompare(a.horario));
+
+                    results.forEach(result => {
+                        const card = document.createElement('div');
+                        card.className = 'result-card';
+                        card.innerHTML = `
+                            <iframe 
+                                src="${result.share_url}" 
+                                title="${result.loterica}" 
+                                loading="lazy">
+                            </iframe>
+                        `;
+                        cardsGrid.appendChild(card);
+                    });
+
+                    groupSection.appendChild(cardsGrid);
+                    CONTAINER.appendChild(groupSection);
+                });
+
+            } catch (err) {
+                console.error("Erro no update live:", err);
+            }
+        }
+
+        updateResultsSmart();
+        setInterval(updateResultsSmart, 15000); // Polling 15s
+    </script>
+</body>
+
+</html>

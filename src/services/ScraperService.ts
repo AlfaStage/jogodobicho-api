@@ -11,58 +11,46 @@ export class ScraperService {
     private tertiary = new ResultadoFacilScraper();
     private horoscopo = new HoroscopoScraper();
 
-    async executeTargeted(targets: LotericaConfig[]): Promise<void> {
+    async executeTargeted(targets: LotericaConfig[], shouldNotify: boolean = true): Promise<void> {
         if (targets.length === 0) return;
 
         console.log(`[ScraperService] Executando varredura direcionada para ${targets.length} lotéricas...`);
 
         // Executar Primary apenas para os targets
         try {
-            await this.primary.execute(targets);
+            await this.primary.execute(targets, undefined, shouldNotify);
         } catch (e) {
             console.error('[ScraperService] Erro no Primary (Targeted):', e);
         }
 
         // Executar Secondary apenas para os targets
         try {
-            await this.secondary.execute(targets);
+            await this.secondary.execute(targets, undefined, shouldNotify);
         } catch (e) {
             console.error('[ScraperService] Erro no Secondary (Targeted):', e);
         }
-
-        // Tertiary (ResultadoFacil) ainda não suporta targeted, ignorar ou implementar depois?
-        // Como o usuário quer eficiência, melhor não chamar o tertiary cegamente se ele varre tudo.
-        // Se quisermos supportar, precisariamos atualizar o ResultadoFacilScraper também.
-        // Por enquanto, targeted foca em Primary/Secondary.
     }
 
-    async executeGlobal(): Promise<void> {
+    async executeGlobal(shouldNotify: boolean = true): Promise<void> {
         console.log('[ScraperService] Iniciando ciclo de scraping GLOBAL multi-fonte...');
-
-        // Estratégia: Rodar Primary e Secondary em paralelo ou sequencial?
-        // Sequencial é mais seguro para não sobrecarregar banco com writes concorrentes (mesmo com lock).
-        // E permite logica de "se primary falhar".
-
-        // Mas como queremos redundancia, melhor rodar ambos, pois um pode ter atualizado e o outro não.
-        // O banco (INSERT OR IGNORE) lida com duplicação.
 
         // 1. O Jogo do Bicho (Primary)
         try {
-            await this.primary.execute();
+            await this.primary.execute(undefined, undefined, shouldNotify);
         } catch (e) {
             console.error('[ScraperService] Erro no Primary (GlobalScraper):', e);
         }
 
         // 2. GigaBicho (Secondary)
         try {
-            await this.secondary.execute();
+            await this.secondary.execute(undefined, undefined, shouldNotify);
         } catch (e) {
             console.error('[ScraperService] Erro no Secondary (GigaBicho):', e);
         }
 
         // 3. ResultadoFacil (Tertiary - Fallback/Test)
         try {
-            await this.tertiary.execute();
+            await this.tertiary.execute(undefined, undefined, shouldNotify);
         } catch (e) {
             console.error('[ScraperService] Erro no Tertiary (ResultadoFacil):', e);
         }

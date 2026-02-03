@@ -239,24 +239,33 @@ export async function registerMcpRoutes(app: FastifyInstance) {
         }
     });
 
-    let transport: SSEServerTransport | null = null;
+    const sessions = new Map<string, SSEServerTransport>();
+    const crypto = await import('node:crypto');
 
     app.get("/sse", async (req, reply) => {
-        console.log("MCP SSE connection opened");
-        transport = new SSEServerTransport("/messages", reply.raw);
+        const sessionId = crypto.randomUUID();
+        console.log(`[MCP] Nova conexão SSE aberta: ${sessionId}`);
+
+        const transport = new SSEServerTransport(`/messages?sessionId=${sessionId}`, reply.raw);
+        sessions.set(sessionId, transport);
+
         await server.connect(transport);
 
         reply.raw.on('close', () => {
-            console.log("MCP SSE connection closed");
-            transport = null;
+            console.log(`[MCP] Conexão SSE encerrada: ${sessionId}`);
+            sessions.delete(sessionId);
         });
     });
 
     app.post("/messages", async (req, reply) => {
+        const sessionId = (req.query as any).sessionId;
+        const transport = sessions.get(sessionId);
+
         if (transport) {
             await transport.handlePostMessage(req.raw, reply.raw);
         } else {
-            reply.code(404).send("Session not started");
+            console.warn(`[MCP] Mensagem recebida para sessão inexistente: ${sessionId}`);
+            reply.code(404).send("Session not found or expired");
         }
     });
 }

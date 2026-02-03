@@ -11,7 +11,7 @@ export class GlobalScraper extends ScraperBase {
         super('https://www.ojogodobicho.com/resultados.htm');
     }
 
-    async execute(targets: LotericaConfig[] = LOTERIAS, targetSlug?: string): Promise<void> {
+    async execute(targets: LotericaConfig[] = LOTERIAS, targetSlug?: string, shouldNotify: boolean = true): Promise<void> {
         console.log(`[GlobalScraper] Iniciando varredura global (${targets.length} alvos)...`);
 
         // Filtrar apenas lotéricas alvo que têm URL definida
@@ -24,7 +24,7 @@ export class GlobalScraper extends ScraperBase {
 
         for (const url of uniqueUrls) {
             try {
-                await this.scrapeUrl(url);
+                await this.scrapeUrl(url, shouldNotify);
             } catch (e) {
                 console.error(`[GlobalScraper] Erro ao processar ${url}:`, e);
             }
@@ -33,7 +33,7 @@ export class GlobalScraper extends ScraperBase {
         console.log('[GlobalScraper] Varredura finalizada.');
     }
 
-    private async scrapeUrl(url: string): Promise<void> {
+    private async scrapeUrl(url: string, shouldNotify: boolean): Promise<void> {
         // console.log(`Buscando dados de: ${url}`); 
         // (Reduzir log spam se rodar muito frequente)
         const $ = await this.fetchHtml(url);
@@ -144,12 +144,14 @@ export class GlobalScraper extends ScraperBase {
 
                         console.log(`[OK] Gravado: ${lotericaSlug} - ${dataIso} - ${horario}`);
 
-                        this.webhookService.notifyAll('novo_resultado', {
-                            loterica: lotericaSlug,
-                            data: dataIso,
-                            horario,
-                            premios
-                        }).catch(() => { });
+                        if (shouldNotify) {
+                            this.webhookService.notifyAll('novo_resultado', {
+                                loterica: lotericaSlug,
+                                data: dataIso,
+                                horario,
+                                premios
+                            }).catch(() => { });
+                        }
                     }
                 })();
             }

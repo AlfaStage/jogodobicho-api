@@ -12,7 +12,7 @@ export class GigaBichoScraper extends ScraperBase {
         super('https://www.gigabicho.com.br/');
     }
 
-    async execute(targets: LotericaConfig[] = LOTERIAS, targetSlug?: string): Promise<void> {
+    async execute(targets: LotericaConfig[] = LOTERIAS, targetSlug?: string, shouldNotify: boolean = true): Promise<void> {
         console.log(`[GigaBichoScraper] Iniciando varredura (${targets.length} alvos)...`);
 
         // Pegar URLs do GigaBicho dos alvos
@@ -28,7 +28,7 @@ export class GigaBichoScraper extends ScraperBase {
 
         for (const url of uniqueUrls) {
             try {
-                await this.scrapeUrl(url);
+                await this.scrapeUrl(url, shouldNotify);
             } catch (error) {
                 console.error(`[GigaBichoScraper] Erro ao processar ${url}:`, error);
             }
@@ -37,7 +37,7 @@ export class GigaBichoScraper extends ScraperBase {
         console.log('[GigaBichoScraper] Varredura finalizada.');
     }
 
-    private async scrapeUrl(url: string): Promise<void> {
+    private async scrapeUrl(url: string, shouldNotify: boolean): Promise<void> {
         const $ = await this.fetchHtml(url);
         if (!$) return;
 
@@ -119,7 +119,7 @@ export class GigaBichoScraper extends ScraperBase {
             });
 
             if (premios.length > 0) {
-                this.saveResult(loteria.slug, dataIso, horarioFormatado, premios);
+                this.saveResult(loteria.slug, dataIso, horarioFormatado, premios, shouldNotify);
             }
         }
     }
@@ -156,7 +156,7 @@ export class GigaBichoScraper extends ScraperBase {
         return Math.ceil(dezenas / 4);
     }
 
-    private saveResult(loteriaSlug: string, data: string, horario: string, premios: any[]): void {
+    private saveResult(loteriaSlug: string, data: string, horario: string, premios: any[], shouldNotify: boolean = true): void {
         try {
             // Verificar se já existe
             const exists = db.prepare('SELECT id FROM resultados WHERE loterica_slug = ? AND data = ? AND horario = ?')
@@ -177,12 +177,14 @@ export class GigaBichoScraper extends ScraperBase {
             console.log(`[GigaBicho] Gravado: ${loteriaSlug} - ${data} ${horario} (${premios.length} prêmios)`);
 
             // Webhook opcional
-            this.webhookService.notifyAll('resultado.novo', {
-                loteria: loteriaSlug,
-                data,
-                horario,
-                premios
-            }).catch(() => { });
+            if (shouldNotify) {
+                this.webhookService.notifyAll('resultado.novo', {
+                    loteria: loteriaSlug,
+                    data,
+                    horario,
+                    premios
+                }).catch(() => { });
+            }
 
         } catch (error) {
             console.error(`[GigaBicho] Erro ao salvar resultado:`, error);

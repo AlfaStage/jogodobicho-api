@@ -2,6 +2,7 @@ import { ScraperBase } from './ScraperBase.js';
 import db from '../db.js';
 import { randomUUID } from 'crypto';
 import { WebhookService } from '../services/WebhookService.js';
+import { LOTERIAS, LotericaConfig } from '../config/loterias.js';
 
 export class OjogodobichoScraper extends ScraperBase {
     private webhookService = new WebhookService();
@@ -10,7 +11,7 @@ export class OjogodobichoScraper extends ScraperBase {
         super('https://www.ojogodobicho.com/deu_no_poste.htm');
     }
 
-    async execute(): Promise<void> {
+    async execute(targets: LotericaConfig[] = [], targetSlug?: string, shouldNotify: boolean = true): Promise<void> {
         console.log('Iniciando scrape de ojogodobicho.com...');
         const $ = await this.fetchHtml();
 
@@ -146,13 +147,15 @@ export class OjogodobichoScraper extends ScraperBase {
                         // Vamos logar para fazer depois.
                         console.log(`Novo resultado salvo: ${lotericaSlug} ${horario}`);
 
-                        // Fire and forget webhook
-                        this.webhookService.notifyAll('novo_resultado', {
-                            loterica: lotericaSlug,
-                            data: dataIso,
-                            horario: horario,
-                            premios: prizesData
-                        }).catch((err: any) => console.error('Erro webhook:', err.message));
+                        if (shouldNotify) {
+                            // Fire and forget webhook
+                            this.webhookService.notifyAll('novo_resultado', {
+                                loterica: lotericaSlug,
+                                data: dataIso,
+                                horario: horario,
+                                premios: prizesData
+                            }).catch((err: any) => console.error('Erro webhook:', err.message));
+                        }
                     }
                 }
             });

@@ -11,7 +11,7 @@ export class ResultadoFacilScraper extends ScraperBase {
         super('https://www.resultadofacil.com.br/');
     }
 
-    async execute(targets: LotericaConfig[] = LOTERIAS, targetSlug?: string): Promise<void> {
+    async execute(targets: LotericaConfig[] = LOTERIAS, targetSlug?: string, shouldNotify: boolean = true): Promise<void> {
         console.log('[ResultadoFacilScraper] Iniciando varredura...');
 
         let loteriasAlvo = LOTERIAS.filter(l => l.urlResultadoFacil);

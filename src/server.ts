@@ -9,7 +9,17 @@ import { bichosRoutes } from './routes/bichos.js';
 import { horoscopoRoutes } from './routes/horoscopo.js';
 import { comoJogarRoutes } from './routes/comojogar.js';
 
-const app = fastify({ logger: true });
+const app = fastify({
+    logger: true,
+    trustProxy: true // Essencial para rodar atrás de reverse proxy (Easypanel/Nginx)
+});
+
+// Registrar plugin de arquivos estáticos
+import fastifyStatic from '@fastify/static';
+app.register(fastifyStatic, {
+    root: path.resolve('public'),
+    prefix: '/public/', // Opcional: prefixo para URL
+});
 
 app.setValidatorCompiler(validatorCompiler);
 app.setSerializerCompiler(serializerCompiler);
@@ -54,8 +64,10 @@ app.addHook('onRequest', async (request, reply) => {
     if (
         request.url.startsWith('/docs') ||
         request.url.startsWith('/health') ||
-        request.url.startsWith('/admin') || // Permitir dashboard interno
-        request.url.startsWith('/live') || // Permitir página ao vivo
+        request.url.startsWith('/admin') || // Rota base do admin
+        request.url.startsWith('/live') || // Página ao vivo
+        request.url.startsWith('/css') || // CSS global
+        request.url.startsWith('/public') || // Arquivos estáticos
         request.url.startsWith('/sse') || // MCP SSE
         request.url.startsWith('/messages') || // MCP Messages
         request.url === '/favicon.ico'

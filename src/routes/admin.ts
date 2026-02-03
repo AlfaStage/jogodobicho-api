@@ -13,6 +13,10 @@ export async function adminRoutes(app: FastifyInstance) {
     // Como não temos @fastify/static configurado globalmente para essa pasta, 
     // vamos servir manualmente para simplificar sem nova dependência
 
+    server.get('/', async (req, reply) => {
+        return reply.redirect('/admin/template');
+    });
+
     server.get('/webhooks', async (req, reply) => {
         const html = fs.readFileSync(path.resolve('public/admin/webhooks.html'), 'utf-8');
         reply.header('Content-Type', 'text/html');

@@ -39,5 +39,5 @@ export abstract class ScraperBase {
         }
     }
 
-    abstract execute(targets?: LotericaConfig[], targetSlug?: string): Promise<void>;
+    abstract execute(targets?: LotericaConfig[], targetSlug?: string, shouldNotify?: boolean): Promise<void>;
 }

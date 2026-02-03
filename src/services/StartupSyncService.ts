@@ -30,7 +30,7 @@ export class StartupSyncService {
 
             // Poderíamos rodar apenas para as faltantes, mas o executeGlobal já lida com INSERT OR IGNORE
             // e garante redundância de fontes.
-            await this.scraperService.executeGlobal();
+            await this.scraperService.executeGlobal(false);
         } else {
             console.log('[StartupSyncService] O banco de dados para hoje já possui registros. Nenhuma ação necessária.');
         }

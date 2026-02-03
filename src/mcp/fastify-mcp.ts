@@ -2,7 +2,6 @@ import { FastifyInstance } from 'fastify';
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { isJSONRPCRequest } from "@modelcontextprotocol/sdk/types.js";
 import {
     CallToolRequestSchema,
     ListToolsRequestSchema,
@@ -736,15 +735,21 @@ export async function registerMcpRoutes(app: FastifyInstance) {
         reply.header('Access-Control-Allow-Credentials', 'true');
         
         try {
-            // Verificar se é uma requisição JSON-RPC válida
-            const body = req.body;
+            // Verificar se é uma mensagem JSON-RPC válida (request ou notification)
+            const body = req.body as any;
             
-            if (!body || !isJSONRPCRequest(body)) {
+            // Validação manual: aceita tanto requests (com id) quanto notificações (sem id)
+            const isValidJSONRPC = body && 
+                typeof body === 'object' && 
+                body.jsonrpc === '2.0' && 
+                typeof body.method === 'string';
+            
+            if (!isValidJSONRPC) {
                 console.log(`[MCP Streamable] ⚠️ Body inválido:`, body);
                 return reply.code(400).send({
                     jsonrpc: "2.0",
-                    error: { code: -32600, message: "Invalid JSON-RPC request" },
-                    id: null
+                    error: { code: -32600, message: "Invalid JSON-RPC message" },
+                    id: body?.id || null
                 });
             }
 

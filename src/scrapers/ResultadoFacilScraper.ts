@@ -45,13 +45,9 @@ export class ResultadoFacilScraper extends ScraperBase {
             const $ = await this.fetchHtml(url, headers);
             if (!$) return;
 
-            // Parser logic here...
-            // Por enquanto, apenas log de sucesso (removido log excessivo)
+            // Parser logic here (implementado no futuro)
         } catch (e: any) {
-            if (e.response && e.response.status === 429) {
-                console.warn(`[ResultadoFacil] Limite de requisições (429) excedido para ${slug}. Pulando.`);
-                return;
-            }
+            // Outros erros ainda são lançados
             throw e;
         }
 

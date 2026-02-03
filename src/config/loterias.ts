@@ -210,7 +210,7 @@ export const LOTERIAS: LotericaConfig[] = [
         id: 'br-federal',
         slug: 'federal',
         nome: 'Loteria Federal (Bicho)',
-        url: 'https://www.ojogodobicho.com/federal.htm',
+        url: 'https://www.ojogodobicho.com/estatistica/federal/',
         urlGigaBicho: 'https://www.gigabicho.com.br/loteria-federal-jogo-do-bicho/',
         horarios: ['19:00']
     },

@@ -10,7 +10,11 @@ export abstract class ScraperBase {
         this.baseUrl = baseUrl;
     }
 
-    protected async fetchHtml(url: string = this.baseUrl, customHeaders: Record<string, string> = {}): Promise<cheerio.CheerioAPI | null> {
+    protected async fetchHtml(
+        url: string = this.baseUrl,
+        customHeaders: Record<string, string> = {},
+        silentCodes: number[] = [403, 404, 429]
+    ): Promise<cheerio.CheerioAPI | null> {
         try {
             const { data } = await axios.get(url, {
                 headers: {
@@ -20,6 +24,12 @@ export abstract class ScraperBase {
             });
             return cheerio.load(data);
         } catch (error: any) {
+            const status = error.response?.status;
+            if (status && silentCodes.includes(status)) {
+                // Silencioso: Não logar como erro crítico
+                return null;
+            }
+
             if (error.isAxiosError && error.response) {
                 console.error(`Erro ${error.response.status} ao buscar HTML de ${url}`);
             } else {

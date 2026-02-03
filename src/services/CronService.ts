@@ -87,7 +87,7 @@ export class CronService {
         }
 
         if (targets.length > 0) {
-            console.log(`[SmartScheduler] ${targets.length} lotéricas com sorteios pendentes. Iniciando scraping direcionado...`);
+            // console.log(`[SmartScheduler] ${targets.length} lotéricas com sorteios pendentes. Iniciando scraping direcionado...`);
             await this.scraperService.executeTargeted(targets);
         } else {
             // console.log(`[SmartScheduler] Todos os sorteios recentes já estão atualizados.`);

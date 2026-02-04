@@ -32,9 +32,42 @@ export async function comoJogarRoutes(app: FastifyInstance) {
     // Rota Principal (Todo o conteúdo)
     server.get('/', {
         schema: {
-            summary: 'Instruções Completas de Como Jogar',
-            tags: ['Info'],
-            response: { 200: z.object({ content: z.string() }) }
+            summary: '📖 Instruções Completas de Como Jogar',
+            description: `
+Retorna todo o conteúdo educacional sobre o Jogo do Bicho em formato Markdown.
+
+Inclui:
+- Regras básicas do jogo
+- Tabela completa de grupos e dezenas
+- Modalidades de aposta
+- Curiosidades históricas
+- Dicas de apostas
+
+### Exemplo de Requisição:
+\`\`\`bash
+curl -X GET "http://localhost:3002/v1/como-jogar" \\
+  -H "x-api-key: SUA_API_KEY"
+\`\`\`
+
+### Exemplo de Resposta (200 OK):
+\`\`\`json
+{
+  "content": "# Como Jogar no Jogo do Bicho\\n\\n## Regras Básicas\\nO Jogo do Bicho é uma loteria..."
+}
+\`\`\`
+
+### Uso Recomendado:
+Este endpoint é ideal para aplicativos que querem exibir o conteúdo completo em uma página de ajuda ou tutorial.
+
+### Formato:
+O conteúdo é retornado em **Markdown**, pronto para ser renderizado em qualquer visualizador Markdown.
+            `,
+            tags: ['ℹ️ Info'],
+            response: { 
+                200: z.object({ 
+                    content: z.string().describe('Conteúdo completo em formato Markdown') 
+                })
+            }
         }
     }, async () => {
         try {
@@ -47,19 +80,64 @@ export async function comoJogarRoutes(app: FastifyInstance) {
 
     // Sub-rotas para partes específicas
     const sections = [
-        { path: '/regras', header: 'Regras Básicas', summary: 'Regras Básicas do Jogo' },
-        { path: '/tabela', header: 'Tabela de Grupos e Dezenas', summary: 'Tabela Completa de Animais' },
-        { path: '/modalidades', header: 'Modalidades de Aposta', summary: 'Diferentes formas de apostar' },
-        { path: '/historia', header: 'Curiosidades Históricas', summary: 'História do Jogo do Bicho' },
-        { path: '/dicas', header: 'Dicas de Apostas', summary: 'Dicas e estratégias para apostas' },
+        { 
+            path: '/regras', 
+            header: 'Regras Básicas', 
+            summary: '📋 Regras Básicas do Jogo',
+            description: 'Regras fundamentais e funcionamento do Jogo do Bicho.'
+        },
+        { 
+            path: '/tabela', 
+            header: 'Tabela de Grupos e Dezenas', 
+            summary: '📊 Tabela Completa de Animais',
+            description: 'Lista completa dos 25 grupos com seus respectivos animais e dezenas.'
+        },
+        { 
+            path: '/modalidades', 
+            header: 'Modalidades de Aposta', 
+            summary: '🎲 Modalidades de Aposta',
+            description: 'Diferentes formas de apostar: Grupo, Dezena, Centena, Milhar, etc.'
+        },
+        { 
+            path: '/historia', 
+            header: 'Curiosidades Históricas', 
+            summary: '📚 História do Jogo do Bicho',
+            description: 'Origem, curiosidades e evolução histórica do jogo.'
+        },
+        { 
+            path: '/dicas', 
+            header: 'Dicas de Apostas', 
+            summary: '💡 Dicas e Estratégias',
+            description: 'Dicas úteis e estratégias para apostar de forma consciente.'
+        },
     ];
 
     for (const section of sections) {
         server.get(section.path, {
             schema: {
                 summary: section.summary,
-                tags: ['Info'],
-                response: { 200: z.object({ content: z.string() }) }
+                description: `
+${section.description}
+
+### Exemplo de Requisição:
+\`\`\`bash
+curl -X GET "http://localhost:3002/v1/como-jogar${section.path}" \\
+  -H "x-api-key: SUA_API_KEY"
+\`\`\`
+
+### Exemplo de Resposta (200 OK):
+\`\`\`json
+{
+  "content": "Conteúdo específico da seção em formato Markdown..."
+}
+\`\`\`
+                `,
+                tags: ['ℹ️ Info'],
+                response: { 
+                    200: z.object({ 
+                        content: z.string().describe(`Conteúdo da seção: ${section.header}`) 
+                    })
+                }
             }
         }, async () => {
             try {

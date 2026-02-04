@@ -2,10 +2,13 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import fs from 'fs/promises';
 import path from 'path';
+import { logger } from '../utils/logger.js';
 
 export class ContentScraper {
+    private serviceName = 'ContentScraper';
+
     async execute() {
-        console.log('Raspando conteúdo estático (História/Regras)...');
+        logger.info(this.serviceName, 'Raspando conteúdo estático (História/Regras)...');
         try {
             const url = 'https://www.ojogodobicho.com/historia.htm';
             const { data: html } = await axios.get(url, { responseType: 'arraybuffer' });
@@ -31,10 +34,10 @@ export class ContentScraper {
             const outputPath = path.resolve('src/data/historia.md');
             await fs.mkdir(path.dirname(outputPath), { recursive: true });
             await fs.writeFile(outputPath, content, 'utf-8');
-            console.log('Conteúdo salvo em src/data/historia.md');
+            logger.success(this.serviceName, 'Conteúdo salvo em src/data/historia.md');
 
         } catch (error: any) {
-            console.error('Erro ao raspar conteúdo:', error.message);
+            logger.error(this.serviceName, 'Erro ao raspar conteúdo:', error.message);
         }
     }
 }

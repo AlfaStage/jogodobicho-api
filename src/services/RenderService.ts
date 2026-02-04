@@ -3,6 +3,7 @@ import path from 'path';
 import satori from 'satori';
 import { Resvg } from '@resvg/resvg-js';
 import { html as toReactNode } from 'satori-html';
+import { logger } from '../utils/logger.js';
 
 const TEMPLATE_PATH = path.resolve('src/templates/result.html');
 
@@ -14,24 +15,27 @@ let fontBuffer: Buffer | null = null;
 let fontBoldBuffer: Buffer | null = null;
 
 export class RenderService {
+    private serviceName = 'RenderService';
+    private fontsInitialized = false;
+    private initPromise: Promise<void> | null = null;
 
     constructor() {
-        this.initFonts();
+        this.initPromise = this.initFonts();
     }
 
-    public async initFonts() {
+    async initFonts() {
         if (fontBuffer && fontBoldBuffer) {
             return; // Already loaded
         }
 
         try {
             if (!fontBuffer && await fs.pathExists(REGULAR_FONT_PATH)) {
-                console.log('[RenderService] Carregando fonte regular...');
+                logger.info(this.serviceName, 'Carregando fonte regular...');
                 fontBuffer = await fs.readFile(REGULAR_FONT_PATH);
             }
 
             if (!fontBoldBuffer && await fs.pathExists(BOLD_FONT_PATH)) {
-                console.log('[RenderService] Carregando fonte negrito...');
+                logger.info(this.serviceName, 'Carregando fonte negrito...');
                 fontBoldBuffer = await fs.readFile(BOLD_FONT_PATH);
             }
 
@@ -41,9 +45,9 @@ export class RenderService {
                 if (!fontBoldBuffer) missing.push('Inter-Bold.ttf');
                 throw new Error(`Fontes locais não encontradas: ${missing.join(', ')}. Verifique src/assets/fonts/`);
             }
-            console.log('[RenderService] Fontes carregadas com sucesso.');
+            logger.success(this.serviceName, 'Fontes carregadas com sucesso');
         } catch (e: any) {
-            console.error('[RenderService] Falha crítica ao carregar fontes:', e.message);
+            logger.error(this.serviceName, 'Falha crítica ao carregar fontes:', e.message);
             throw e;
         }
     }
@@ -253,7 +257,10 @@ export class RenderService {
 
     // Gerar Imagem (PNG) a partir do resultado
     async renderImage(resultado: any, overrideHtml?: string): Promise<Buffer> {
-        await this.initFonts();
+        // Aguardar inicialização das fontes (evita race condition)
+        if (this.initPromise) {
+            await this.initPromise;
+        }
 
         if (!fontBuffer || !fontBoldBuffer) {
             throw new Error("Fontes não carregadas. Verifique a conexão com a internet para baixar as fontes do Google Fonts.");

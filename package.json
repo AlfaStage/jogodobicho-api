@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "test": "echo \"Erro: nenhum teste especificado\" && exit 0"
   },
   "keywords": [],
   "author": "",
@@ -30,20 +31,18 @@
     "@fastify/swagger-ui": "^5.2.5",
     "@modelcontextprotocol/sdk": "^1.25.3",
     "@resvg/resvg-js": "^2.6.2",
-    "@types/express": "^5.0.6",
     "axios": "^1.13.4",
     "better-sqlite3": "^12.6.2",
     "cheerio": "^1.2.0",
     "cron": "^4.4.0",
     "dotenv": "^17.2.3",
-    "express": "^5.2.1",
     "fastify": "^5.7.2",
     "fastify-type-provider-zod": "^6.1.0",
     "fs-extra": "^11.3.3",
     "juice": "^11.1.0",
+    "puppeteer": "^24.36.1",
     "satori": "^0.19.1",
     "satori-html": "^0.3.2",
-    "sqlite3": "^5.1.7",
     "zod": "^4.3.6"
   }
 }

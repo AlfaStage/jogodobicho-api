@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { RenderService } from '../services/RenderService.js';
+import { logger } from '../utils/logger.js';
 import path from 'path';
 import fs from 'fs';
 
@@ -9,35 +10,95 @@ export async function adminRoutes(app: FastifyInstance) {
     const server = app.withTypeProvider<ZodTypeProvider>();
     const renderService = new RenderService();
 
-    // Servir arquivos estáticos do admin
-    // Como não temos @fastify/static configurado globalmente para essa pasta, 
-    // vamos servir manualmente para simplificar sem nova dependência
-
+    // Página inicial redireciona para template
     server.get('/', async (req, reply) => {
         return reply.redirect('/admin/template');
     });
 
     server.get('/webhooks', async (req, reply) => {
-        const html = fs.readFileSync(path.resolve('public/admin/webhooks.html'), 'utf-8');
-        reply.header('Content-Type', 'text/html');
-        return reply.send(html);
+        try {
+            const html = fs.readFileSync(path.resolve('public/admin/webhooks.html'), 'utf-8');
+            reply.header('Content-Type', 'text/html');
+            return reply.send(html);
+        } catch (error) {
+            logger.error('Admin', 'Erro ao carregar webhooks.html:', error);
+            return reply.status(500).send({ error: 'Erro ao carregar página de webhooks' });
+        }
     });
 
     server.get('/template', async (req, reply) => {
-        const html = fs.readFileSync(path.resolve('public/admin/template.html'), 'utf-8');
-        reply.header('Content-Type', 'text/html');
-        return reply.send(html);
+        try {
+            const html = fs.readFileSync(path.resolve('public/admin/template.html'), 'utf-8');
+            reply.header('Content-Type', 'text/html');
+            return reply.send(html);
+        } catch (error) {
+            logger.error('Admin', 'Erro ao carregar template.html:', error);
+            return reply.status(500).send({ error: 'Erro ao carregar página de template' });
+        }
     });
 
     // API: Obter Template Atual
-    server.get('/api/template', async () => {
+    server.get('/api/template', {
+        schema: {
+            summary: 'Obter Template Atual',
+            description: `
+Retorna o template HTML atual usado para geração de imagens dos resultados.
+
+### Exemplo de Requisição:
+\`\`\`bash
+curl -X GET "http://localhost:3002/admin/api/template"
+\`\`\`
+
+### Exemplo de Resposta (200 OK):
+\`\`\`json
+{
+  "html": "<!DOCTYPE html>...<html>...</html>"
+}
+\`\`\`
+            `,
+            tags: ['⚙️ Admin'],
+            response: {
+                200: z.object({ 
+                    html: z.string().describe('Template HTML completo') 
+                })
+            }
+        }
+    }, async () => {
         return { html: await renderService.getTemplate() };
     });
 
     // API: Salvar Template
     server.post('/api/template', {
         schema: {
-            body: z.object({ html: z.string() })
+            summary: 'Salvar Template',
+            description: `
+Salva um novo template HTML para geração de imagens.
+
+### Exemplo de Requisição:
+\`\`\`bash
+curl -X POST "http://localhost:3002/admin/api/template" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "html": "<!DOCTYPE html><html>...</html>"
+  }'
+\`\`\`
+
+### Exemplo de Resposta (200 OK):
+\`\`\`json
+{
+  "message": "Template salvo com sucesso!"
+}
+\`\`\`
+            `,
+            tags: ['⚙️ Admin'],
+            body: z.object({ 
+                html: z.string().describe('HTML do template completo') 
+            }),
+            response: {
+                200: z.object({ 
+                    message: z.string() 
+                })
+            }
         }
     }, async (req, reply) => {
         const { html } = req.body;
@@ -48,14 +109,52 @@ export async function adminRoutes(app: FastifyInstance) {
     // API: Preview Template (Renderiza imagem temporária)
     server.post('/api/preview', {
         schema: {
-            body: z.object({ html: z.string() })
+            summary: 'Preview do Template',
+            description: `
+Gera um preview da imagem usando um template HTML personalizado com dados mockados.
+
+Útil para testar templates antes de salvá-los definitivamente.
+
+### Exemplo de Requisição:
+\`\`\`bash
+curl -X POST "http://localhost:3002/admin/api/preview" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "html": "<!DOCTYPE html><html>...</html>"
+  }' \\
+  --output preview.png
+\`\`\`
+
+### Exemplo de Resposta (200 OK):
+\`\`\`json
+{
+  "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA...",
+  "html": "<!DOCTYPE html>..."
+}
+\`\`\`
+            `,
+            tags: ['⚙️ Admin'],
+            body: z.object({ 
+                html: z.string().describe('HTML do template para preview') 
+            }),
+            response: {
+                200: z.object({
+                    image: z.string().describe('Imagem em base64 (data URI)'),
+                    html: z.string().describe('HTML renderizado')
+                }),
+                500: z.object({
+                    message: z.string(),
+                    error: z.string(),
+                    stack: z.string()
+                }).describe('Erro ao gerar preview')
+            }
         }
     }, async (req, reply) => {
         const { html } = req.body;
 
         // Mock de dados para preview
         const mockResultado = {
-            data: '2026-02-03',
+            data: '2026-02-04',
             horario: '16:20',
             loterica: 'LOOK Goiás (Preview)',
             premios: [
@@ -70,22 +169,22 @@ export async function adminRoutes(app: FastifyInstance) {
         };
 
         try {
-            console.log('[Preview] Recebendo HTML:', html?.substring(0, 50) + '...');
+            logger.info('Preview', 'Recebendo HTML:', html?.substring(0, 50) + '...');
 
             // Garantir que fontes estão carregadas
-            await renderService['initFonts'](); // Acesso privado hack via string ou tornar público
+            await renderService.initFonts();
 
             const buffer = await renderService.renderImage(mockResultado, html);
             const htmlRendered = await renderService.renderHtml(mockResultado, html);
 
-            console.log('[Preview] Sucesso. Tamanho do Buffer:', buffer.length);
+            logger.success('Preview', 'Sucesso. Tamanho do Buffer:', buffer.length);
 
             return {
                 image: `data:image/png;base64,${buffer.toString('base64')}`,
                 html: htmlRendered
             };
         } catch (error: any) {
-            console.error('[Preview] Erro detalhado:', error);
+            logger.error('Preview', 'Erro detalhado:', error);
             return reply.status(500).send({
                 message: "Erro ao gerar preview",
                 error: error.message,

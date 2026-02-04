@@ -2,36 +2,38 @@ import { ScraperBase } from './ScraperBase.js';
 import db from '../db.js';
 import { randomUUID } from 'crypto';
 import { WebhookService } from '../services/WebhookService.js';
+import { logger } from '../utils/logger.js';
 import { LOTERIAS, LotericaConfig } from '../config/loterias.js';
 
 export class OjogodobichoScraper extends ScraperBase {
     private webhookService = new WebhookService();
+    protected override serviceName = 'OjogodobichoScraper';
 
     constructor() {
         super('https://www.ojogodobicho.com/deu_no_poste.htm');
     }
 
     async execute(targets: LotericaConfig[] = [], targetSlug?: string, shouldNotify: boolean = true): Promise<void> {
-        console.log('Iniciando scrape de ojogodobicho.com...');
-        const $ = await this.fetchHtml();
+        logger.info(this.serviceName, 'Iniciando scrape de ojogodobicho.com...');
+        const $ = await this.fetchHtmlWithRetry();
 
         if (!$) {
-            console.error('Falha ao obter HTML.');
+            logger.error(this.serviceName, 'Falha ao obter HTML');
             return;
         }
 
         const tables = $('table');
-        console.log(`Encontradas ${tables.length} tabelas.`);
+        logger.info(this.serviceName, `Encontradas ${tables.length} tabelas`);
 
         for (let i = 0; i < tables.length; i++) {
             const table = $(tables[i]);
             const caption = table.find('caption').text().trim();
-            console.log(`Processando tabela: ${caption}`);
+            logger.info(this.serviceName, `Processando tabela: ${caption}`);
 
             // Tentar extrair data do caption
             const dataMatch = caption.match(/(\d{1,2}) de ([A-Za-zç]+) de (\d{4})/);
             if (!dataMatch) {
-                console.log(`Ignorando tabela sem data válida: ${caption}`);
+                logger.warn(this.serviceName, `Ignorando tabela sem data válida: ${caption}`);
                 continue;
             }
 
@@ -46,12 +48,12 @@ export class OjogodobichoScraper extends ScraperBase {
             const mes = meses[mesNome] || meses[mesNome.replace('ç', 'c')];
 
             if (!mes) {
-                console.error(`Mês desconhecido: ${mesNome}`);
+                logger.error(this.serviceName, `Mês desconhecido: ${mesNome}`);
                 continue;
             }
 
             const dataIso = `${ano}-${mes}-${dia}`;
-            console.log(`Data extraída: ${dataIso}`);
+            logger.info(this.serviceName, `Data extraída: ${dataIso}`);
 
             const headers: string[] = [];
             table.find('thead th').each((idx, el) => {
@@ -145,7 +147,7 @@ export class OjogodobichoScraper extends ScraperBase {
 
                         // Notificar Webhook (fora da transaction? Não, bom garantir que commitou. Mas aqui dentro é sync)
                         // Vamos logar para fazer depois.
-                        console.log(`Novo resultado salvo: ${lotericaSlug} ${horario}`);
+                        logger.success(this.serviceName, `Novo resultado salvo: ${lotericaSlug} ${horario}`);
 
                         if (shouldNotify) {
                             // Fire and forget webhook
@@ -154,7 +156,7 @@ export class OjogodobichoScraper extends ScraperBase {
                                 data: dataIso,
                                 horario: horario,
                                 premios: prizesData
-                            }).catch((err: any) => console.error('Erro webhook:', err.message));
+                            }).catch((err: any) => logger.error(this.serviceName, 'Erro webhook:', err.message));
                         }
                     }
                 }
@@ -162,9 +164,9 @@ export class OjogodobichoScraper extends ScraperBase {
 
             try {
                 runTransaction();
-                console.log(`Tabela salva com sucesso.`);
+                logger.success(this.serviceName, 'Tabela salva com sucesso');
             } catch (err) {
-                console.error('Erro na transação:', err);
+                logger.error(this.serviceName, 'Erro na transação:', err);
             }
         }
     }

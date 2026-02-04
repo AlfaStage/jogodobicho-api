@@ -1,4 +1,6 @@
 import db from './db.js';
+import { LOTERIAS } from './config/loterias.js';
+import { logger } from './utils/logger.js';
 
 const schema = `
   CREATE TABLE IF NOT EXISTS lotericas (
@@ -40,14 +42,45 @@ const schema = `
     url TEXT NOT NULL UNIQUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+
+  -- Tabela para histórico de disparos de webhooks
+  CREATE TABLE IF NOT EXISTS webhook_logs (
+    id TEXT PRIMARY KEY,
+    webhook_id TEXT NOT NULL,
+    event TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    status TEXT NOT NULL, -- 'success' ou 'error'
+    status_code INTEGER,
+    response_body TEXT,
+    error_message TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(webhook_id) REFERENCES webhooks(id) ON DELETE CASCADE
+  );
+
+  -- Tabela para configurar quais lotéricas disparam em cada webhook
+  CREATE TABLE IF NOT EXISTS webhook_lotericas (
+    id TEXT PRIMARY KEY,
+    webhook_id TEXT NOT NULL,
+    loterica_slug TEXT NOT NULL,
+    enabled BOOLEAN DEFAULT 1,
+    FOREIGN KEY(webhook_id) REFERENCES webhooks(id) ON DELETE CASCADE,
+    UNIQUE(webhook_id, loterica_slug)
+  );
+
+  -- Índices para melhorar performance
+  CREATE INDEX IF NOT EXISTS idx_resultados_data ON resultados(data);
+  CREATE INDEX IF NOT EXISTS idx_resultados_loterica_slug ON resultados(loterica_slug);
+  CREATE INDEX IF NOT EXISTS idx_resultados_horario ON resultados(horario);
+  CREATE INDEX IF NOT EXISTS idx_resultados_composite ON resultados(data, loterica_slug, horario);
+  CREATE INDEX IF NOT EXISTS idx_premios_resultado_id ON premios(resultado_id);
+  CREATE INDEX IF NOT EXISTS idx_horoscopo_data ON horoscopo_diario(data);
+  CREATE INDEX IF NOT EXISTS idx_horoscopo_signo ON horoscopo_diario(signo);
+  CREATE INDEX IF NOT EXISTS idx_webhook_logs_webhook_id ON webhook_logs(webhook_id);
+  CREATE INDEX IF NOT EXISTS idx_webhook_logs_created_at ON webhook_logs(created_at);
+  CREATE INDEX IF NOT EXISTS idx_webhook_lotericas_webhook_id ON webhook_lotericas(webhook_id);
 `;
 
-
-
-
-import { LOTERIAS } from './config/loterias.js';
-
-console.log('Inicializando banco de dados...');
+logger.info('InitDB', 'Inicializando banco de dados...');
 db.exec(schema);
 
 // Inserir lotéricas do arquivo de configuração
@@ -55,8 +88,8 @@ for (const loteria of LOTERIAS) {
   db.prepare('INSERT OR IGNORE INTO lotericas (id, slug, nome) VALUES (?, ?, ?)')
     .run(loteria.id, loteria.slug, loteria.nome);
 }
-console.log(`Lotericas verificadas: ${LOTERIAS.length}`);
+logger.info('InitDB', `Lotericas verificadas: ${LOTERIAS.length}`);
 
-console.log('Banco de dados inicializado com sucesso!');
+logger.success('InitDB', 'Banco de dados inicializado com sucesso!');
 // NOTA: Não fechamos a conexão aqui pois ela é compartilhada com a aplicação
 // A conexão será gerenciada pelo ciclo de vida da aplicação

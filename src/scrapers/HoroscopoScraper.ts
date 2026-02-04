@@ -1,6 +1,7 @@
 import { ScraperBase } from './ScraperBase.js';
 import db from '../db.js';
 import { LotericaConfig } from '../config/loterias.js';
+import { logger } from '../utils/logger.js';
 
 const SIGNOS = [
     { nome: 'Áries', slug: 'aries', url: 'https://www.ojogodobicho.com/aries.htm' },
@@ -18,19 +19,21 @@ const SIGNOS = [
 ];
 
 export class HoroscopoScraper extends ScraperBase {
+    protected serviceName = 'HoroscopoScraper';
+
     constructor() {
         super('https://www.ojogodobicho.com/');
     }
 
     async execute(targets?: LotericaConfig[], targetSlug?: string): Promise<void> {
-        console.log('[HoroscopoScraper] Iniciando varredura de horóscopo...');
+        logger.info(this.serviceName, 'Iniciando varredura de horóscopo...');
         const today = new Date().toISOString().split('T')[0];
 
         // Verificar se já processamos hoje (são 12 signos)
         const check = db.prepare('SELECT count(*) as count FROM horoscopo_diario WHERE data = ?').get(today) as { count: number };
 
         if (check && check.count >= 12) {
-            console.log(`[HoroscopoScraper] Horóscopo de hoje (${today}) já está completo (${check.count} registros). Pulando.`);
+            logger.info(this.serviceName, `Horóscopo de hoje (${today}) já está completo (${check.count} registros). Pulando.`);
             return;
         }
 
@@ -38,16 +41,20 @@ export class HoroscopoScraper extends ScraperBase {
             try {
                 await this.scrapeSigno(signo, today);
             } catch (error) {
-                console.error(`[HoroscopoScraper] Erro ao buscar ${signo.nome}:`, error);
+                logger.error(this.serviceName, `Erro ao buscar ${signo.nome}:`, error);
             }
         }
 
-        console.log('[HoroscopoScraper] Varredura finalizada.');
+        logger.success(this.serviceName, 'Varredura finalizada.');
     }
 
     private async scrapeSigno(signo: typeof SIGNOS[0], data: string): Promise<void> {
-        const $ = await this.fetchHtml(signo.url);
-        if (!$) return;
+        // Usar fetchHtmlWithRetry para ter retry infinito e proteção contra bloqueios
+        const $ = await this.fetchHtmlWithRetry(signo.url);
+        if (!$) {
+            logger.warn(this.serviceName, `Não foi possível carregar página do signo ${signo.nome}`);
+            return;
+        }
 
         // Buscar os números da sorte
         const numeros: string[] = [];
@@ -81,7 +88,9 @@ export class HoroscopoScraper extends ScraperBase {
                 data
             );
 
-            console.log(`[HoroscopoScraper] ${signo.nome}: ${numeros.length} números salvos`);
+            logger.success(this.serviceName, `${signo.nome}: ${numeros.length} números salvos`);
+        } else {
+            logger.warn(this.serviceName, `${signo.nome}: Nenhum número encontrado`);
         }
     }
 }

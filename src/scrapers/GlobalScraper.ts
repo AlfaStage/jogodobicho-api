@@ -2,68 +2,71 @@ import { ScraperBase } from './ScraperBase.js';
 import db from '../db.js';
 import { randomUUID } from 'crypto';
 import { WebhookService } from '../services/WebhookService.js';
+import { logger } from '../utils/logger.js';
 import { LOTERIAS, LotericaConfig } from '../config/loterias.js';
+import { LoteriaPendente } from '../services/ScraperService.js';
 
 export class GlobalScraper extends ScraperBase {
     private webhookService = new WebhookService();
+    protected serviceName = 'GlobalScraper';
 
     constructor() {
         super('https://www.ojogodobicho.com/resultados.htm');
     }
 
-    async execute(targets: LotericaConfig[] = LOTERIAS, targetSlug?: string, shouldNotify: boolean = true): Promise<void> {
-        console.log(`[GlobalScraper] Iniciando varredura global (${targets.length} alvos)...`);
+    async execute(targets: LoteriaPendente[] | LotericaConfig[] = LOTERIAS, targetSlug?: string, shouldNotify: boolean = true): Promise<void> {
+        // Converter para formato padronizado se necessário
+        const loteriasPendentes: LoteriaPendente[] = this.isLoteriaPendenteArray(targets) 
+            ? targets 
+            : (targets as LotericaConfig[]).map(l => ({ loteria: l, horariosPendentes: l.horarios || [] }));
+
+        logger.info(this.serviceName, `Iniciando varredura global (${loteriasPendentes.length} lotéricas)...`);
 
         // Filtrar apenas lotéricas alvo que têm URL definida
-        const urlsToScrape = targets
-            .filter(l => l.url && l.url.length > 0)
-            .map(l => l.url!);
+        const urlsToScrape = loteriasPendentes
+            .filter(lp => lp.loteria.url && lp.loteria.url.length > 0)
+            .map(lp => ({ url: lp.loteria.url!, horariosPendentes: lp.horariosPendentes }));
 
-        // Remover duplicatas (ex: jb-bahia e paratodos-bahia podem usar a mesma URL)
-        const uniqueUrls = [...new Set(urlsToScrape)];
+        // Agrupar por URL (podem haver múltiplas lotéricas com a mesma URL)
+        const urlMap = new Map<string, string[]>();
+        for (const item of urlsToScrape) {
+            const existing = urlMap.get(item.url) || [];
+            // Merge horários pendentes, removendo duplicatas
+            const merged = [...new Set([...existing, ...item.horariosPendentes])];
+            urlMap.set(item.url, merged);
+        }
 
-        for (const url of uniqueUrls) {
+        for (const [url, horariosPendentes] of urlMap) {
             try {
-                await this.scrapeUrl(url, shouldNotify);
+                await this.scrapeUrl(url, horariosPendentes, shouldNotify);
             } catch (e) {
-                console.error(`[GlobalScraper] Erro ao processar ${url}:`, e);
+                logger.error(this.serviceName, `Erro ao processar ${url}:`, e);
             }
         }
 
-        console.log('[GlobalScraper] Varredura finalizada.');
+        logger.success(this.serviceName, 'Varredura finalizada');
     }
 
-    private async scrapeUrl(url: string, shouldNotify: boolean): Promise<void> {
-        // console.log(`Buscando dados de: ${url}`); 
-        // (Reduzir log spam se rodar muito frequente)
-        const $ = await this.fetchHtml(url);
+    private isLoteriaPendenteArray(targets: any[]): targets is LoteriaPendente[] {
+        return targets.length > 0 && 'loteria' in targets[0] && 'horariosPendentes' in targets[0];
+    }
+
+    private async scrapeUrl(url: string, horariosPendentes: string[], shouldNotify: boolean): Promise<void> {
+        // Usar fetchHtmlWithRetry que tem retry infinito e delay automático
+        const $ = await this.fetchHtmlWithRetry(url);
         if (!$) return;
 
         // Identificar qual loterica é baseada na URL
-        // Pode haver múltiplas lotéricas para mesma URL (ex: bahia)
-        // O ideal é tentar descobrir pelo título da tabela ou contexto, mas por simplificação
-        // vamos mapear a URL para o SLUG principal associado a ela na config.
-        // Se houverem conflitos (mesma URL, slugs diferentes), vamos precisar de logica extra.
-        // Por ora, vamos simplificar: Salvar com o slug da PRIMEIRA lotérica que tem essa URL.
         const config = LOTERIAS.find(l => l.url === url);
         if (!config) return;
 
         let lotericaSlug = config.slug;
 
-        // Lógica específica para desambiguar se necessário, ou aceitar que urls compartilhadas
-        // salvarão no slug principal. Para separar Bahia/Paratodos Bahia na mesma página,
-        // precisariamos analisar o conteúdo da tabela.
-        // O site ojogodobicho geralmente tem tabelas separadas? Vamos assumir que sim.
-
         const tables = $('table');
 
         for (let i = 0; i < tables.length; i++) {
             const table = $(tables[i]);
-            const caption = table.find('caption').text().trim(); // "Data..."
-
-            // Tentar identificar subtitulo ou classe que indique a banca específica?
-            // Difícil sem ver o HTML exato de páginas multiplas.
-            // Vamos manter o slug base da URL.
+            const caption = table.find('caption').text().trim();
 
             const dataMatch = caption.match(/(\d{1,2}) de ([A-Za-zç]+) de (\d{4})/);
             if (!dataMatch) continue;
@@ -83,7 +86,6 @@ export class GlobalScraper extends ScraperBase {
             const headers: string[] = [];
             table.find('thead th').each((idx, el) => {
                 const txt = $(el).text().trim();
-                // Ignorar colunas vazias ou de cabeçalho irrelevante
                 if (txt && idx > 0) headers.push(txt);
             });
 
@@ -96,11 +98,13 @@ export class GlobalScraper extends ScraperBase {
                 if (isNaN(posicao)) return;
 
                 for (let j = 1; j < cells.length; j++) {
-                    // Cuidado com limites array
                     if (j - 1 >= headers.length) continue;
 
                     const horario = headers[j - 1];
                     if (!horario) continue;
+
+                    // Filtrar apenas horários pendentes
+                    if (!horariosPendentes.includes(horario)) return;
 
                     const cell = $(cells[j]);
                     const conteudo = cell.text().trim();
@@ -128,7 +132,6 @@ export class GlobalScraper extends ScraperBase {
             for (const [horario, premios] of resultadosMap.entries()) {
                 // Validação mínima: Jogo do Bicho tem que ter pelo menos 5 prêmios principais
                 if (premios.length < 5) {
-                    // console.warn(`[GlobalScraper] Ignorando resultado incompleto de ${horario}: apenas ${premios.length} prêmios.`);
                     continue;
                 }
 
@@ -142,7 +145,7 @@ export class GlobalScraper extends ScraperBase {
                             insertPremio.run(randomUUID(), id, p.posicao, p.milhar, p.grupo, p.bicho);
                         });
 
-                        console.log(`[OK] Gravado: ${lotericaSlug} - ${dataIso} - ${horario}`);
+                        logger.success(this.serviceName, `Gravado: ${lotericaSlug} - ${dataIso} - ${horario}`);
 
                         if (shouldNotify) {
                             this.webhookService.notifyAll('novo_resultado', {
@@ -157,7 +160,4 @@ export class GlobalScraper extends ScraperBase {
             }
         }
     }
-
-    // Removido getSlugFromUrl hardcoded em favor do config
-    // private getSlugFromUrl(url: string): string { ... }
 }

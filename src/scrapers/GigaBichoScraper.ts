@@ -3,42 +3,68 @@ import db from '../db.js';
 import { randomUUID } from 'crypto';
 import { WebhookService } from '../services/WebhookService.js';
 import { LOTERIAS, LotericaConfig } from '../config/loterias.js';
+import { LoteriaPendente } from '../services/ScraperService.js';
+import { logger } from '../utils/logger.js';
 import * as cheerio from 'cheerio';
 
 export class GigaBichoScraper extends ScraperBase {
     private webhookService = new WebhookService();
+    protected serviceName = 'GigaBichoScraper';
 
     constructor() {
         super('https://www.gigabicho.com.br/');
     }
 
-    async execute(targets: LotericaConfig[] = LOTERIAS, targetSlug?: string, shouldNotify: boolean = true): Promise<void> {
-        console.log(`[GigaBichoScraper] Iniciando varredura (${targets.length} alvos)...`);
+    async execute(targets: LoteriaPendente[] | LotericaConfig[] = LOTERIAS, targetSlug?: string, shouldNotify: boolean = true): Promise<void> {
+        // Converter para formato padronizado se necessário
+        const loteriasPendentes: LoteriaPendente[] = this.isLoteriaPendenteArray(targets) 
+            ? targets 
+            : (targets as LotericaConfig[]).map(l => ({ loteria: l, horariosPendentes: l.horarios || [] }));
+
+        logger.info(this.serviceName, `Iniciando varredura (${loteriasPendentes.length} lotéricas)...`);
 
         // Pegar URLs do GigaBicho dos alvos
-        let configs = targets.filter(l => l.urlGigaBicho);
+        const urlsToScrape = loteriasPendentes
+            .filter(lp => lp.loteria.urlGigaBicho)
+            .map(lp => ({ 
+                url: lp.loteria.urlGigaBicho!, 
+                slug: lp.loteria.slug,
+                horariosPendentes: lp.horariosPendentes 
+            }));
 
         if (targetSlug) {
-            configs = configs.filter(l => l.slug === targetSlug);
+            urlsToScrape.filter(u => u.slug === targetSlug);
         }
 
-        const uniqueUrls = [...new Set(configs.map(l => l.urlGigaBicho!))];
+        // Agrupar por URL
+        const urlMap = new Map<string, { slugs: string[], horariosPendentes: string[] }>();
+        for (const item of urlsToScrape) {
+            const existing = urlMap.get(item.url) || { slugs: [], horariosPendentes: [] };
+            existing.slugs.push(item.slug);
+            existing.horariosPendentes = [...new Set([...existing.horariosPendentes, ...item.horariosPendentes])];
+            urlMap.set(item.url, existing);
+        }
 
-        console.log(`[GigaBichoScraper] URLs únicas para processar: ${uniqueUrls.length}`);
+        logger.info(this.serviceName, `URLs únicas para processar: ${urlMap.size}`);
 
-        for (const url of uniqueUrls) {
+        for (const [url, data] of urlMap) {
             try {
-                await this.scrapeUrl(url, shouldNotify);
+                await this.scrapeUrl(url, data.horariosPendentes, shouldNotify);
             } catch (error) {
-                console.error(`[GigaBichoScraper] Erro ao processar ${url}:`, error);
+                logger.error(this.serviceName, `Erro ao processar ${url}:`, error);
             }
         }
 
-        console.log('[GigaBichoScraper] Varredura finalizada.');
+        logger.success(this.serviceName, 'Varredura finalizada.');
     }
 
-    private async scrapeUrl(url: string, shouldNotify: boolean): Promise<void> {
-        const $ = await this.fetchHtml(url);
+    private isLoteriaPendenteArray(targets: any[]): targets is LoteriaPendente[] {
+        return targets.length > 0 && 'loteria' in targets[0] && 'horariosPendentes' in targets[0];
+    }
+
+    private async scrapeUrl(url: string, horariosPendentes: string[], shouldNotify: boolean): Promise<void> {
+        // Usar fetchHtmlWithRetry que tem retry infinito e delay automático
+        const $ = await this.fetchHtmlWithRetry(url);
         if (!$) return;
 
         const rawHtml = $.html();
@@ -54,11 +80,8 @@ export class GigaBichoScraper extends ScraperBase {
             const $part = cheerio.load(content);
 
             // Tentar encontrar qual lotérica esse título se refere
-            // Ex: "Sorteio 10 horas Bahia" -> Bahia
-            // Ex: "Sorteio 10 horas Bahia Maluca" -> Bahia Maluca
             const loteria = this.detectLoteria(titulo, url);
             if (!loteria) {
-                // console.log(`[GigaBichoScraper] Título não reconhecido: "${titulo}"`);
                 continue;
             }
 
@@ -68,6 +91,9 @@ export class GigaBichoScraper extends ScraperBase {
             const hora = parseInt(horarioMatch[1]);
             const minuto = horarioMatch[2] || '00';
             const horarioFormatado = `${hora.toString().padStart(2, '0')}:${minuto}`;
+
+            // Verificar se este horário está na lista de pendentes
+            if (!horariosPendentes.includes(horarioFormatado)) continue;
 
             let dataIso = '';
             const dataMatch = $part.text().match(/(\d{2})\/(\d{2})\/(\d{4})/);
@@ -174,7 +200,7 @@ export class GigaBichoScraper extends ScraperBase {
                 insertPremio.run(randomUUID(), resultadoId, p.posicao, p.milhar, p.grupo, p.bicho);
             }
 
-            console.log(`[GigaBicho] Gravado: ${loteriaSlug} - ${data} ${horario} (${premios.length} prêmios)`);
+            logger.success(this.serviceName, `Gravado: ${loteriaSlug} - ${data} ${horario} (${premios.length} prêmios)`);
 
             // Webhook opcional
             if (shouldNotify) {
@@ -187,7 +213,7 @@ export class GigaBichoScraper extends ScraperBase {
             }
 
         } catch (error) {
-            console.error(`[GigaBicho] Erro ao salvar resultado:`, error);
+            logger.error(this.serviceName, 'Erro ao salvar resultado:', error);
         }
     }
 }

@@ -8,15 +8,41 @@ export async function bichosRoutes(app: FastifyInstance) {
 
     server.get('/', {
         schema: {
-            summary: 'Listar Bichos',
-            description: 'Retorna a tabela completa de bichos (grupos de 1 a 25).',
-            tags: ['Bichos'],
+            summary: 'Listar Todos os Bichos',
+            description: `
+Retorna a tabela completa de bichos (grupos de 1 a 25) com suas dezenas associadas.
+
+### Exemplo de Requisição:
+\`\`\`bash
+curl -X GET "http://localhost:3002/v1/bichos" \\
+  -H "x-api-key: SUA_API_KEY"
+\`\`\`
+
+### Exemplo de Resposta (200 OK):
+\`\`\`json
+[
+  { "grupo": 1, "nome": "Avestruz", "dezenas": ["01", "02", "03", "04"] },
+  { "grupo": 2, "nome": "Águia", "dezenas": ["05", "06", "07", "08"] },
+  { "grupo": 3, "nome": "Burro", "dezenas": ["09", "10", "11", "12"] },
+  { "grupo": 4, "nome": "Borboleta", "dezenas": ["13", "14", "15", "16"] },
+  { "grupo": 5, "nome": "Cachorro", "dezenas": ["17", "18", "19", "20"] }
+  // ... grupos 6 a 25
+]
+\`\`\`
+
+### Significado dos Grupos:
+Cada grupo representa um animal e contém 4 dezenas. Por exemplo:
+- **Grupo 1 (Avestruz):** 01, 02, 03, 04
+- **Grupo 9 (Cobra):** 21, 22, 23, 24
+- **Grupo 25 (Vaca):** 97, 98, 99, 00
+            `,
+            tags: ['🦁 Bichos'],
             response: {
                 200: z.array(z.object({
-                    grupo: z.number().describe('Número do grupo (1-25)'),
-                    nome: z.string().describe('Nome do bicho'),
-                    dezenas: z.array(z.string()).describe('Lista de dezenas associadas'),
-                }))
+                    grupo: z.number().int().min(1).max(25).describe('Número do grupo (1-25)'),
+                    nome: z.string().describe('Nome do animal'),
+                    dezenas: z.array(z.string()).describe('Array com 4 dezenas (00-99)'),
+                })).describe('Lista completa dos 25 grupos de bichos')
             }
         }
     }, async () => {
@@ -25,19 +51,65 @@ export async function bichosRoutes(app: FastifyInstance) {
 
     server.get('/:query', {
         schema: {
-            summary: 'Buscar Bicho por Grupo ou Dezena',
-            description: 'Busca um bicho específico. A query pode ser o número do grupo (ex: 9) ou uma dezena (ex: 34).',
-            tags: ['Bichos'],
+            summary: 'Buscar Bicho por Grupo, Dezena ou Nome',
+            description: `
+Busca um bicho específico. A query pode ser:
+- **Número do grupo** (1-25): Ex: \`9\`, \`15\`, \`25\`
+- **Dezena específica** (00-99): Ex: \`23\`, \`07\`, \`00\`
+- **Nome do bicho**: Ex: \`cavalo\`, \`cobra\`, \`elefante\`
+
+### Exemplos de Requisição:
+
+#### Buscar por grupo:
+\`\`\`bash
+curl -X GET "http://localhost:3002/v1/bichos/9" \\
+  -H "x-api-key: SUA_API_KEY"
+\`\`\`
+
+#### Buscar por dezena:
+\`\`\`bash
+curl -X GET "http://localhost:3002/v1/bichos/23" \\
+  -H "x-api-key: SUA_API_KEY"
+\`\`\`
+
+#### Buscar por nome:
+\`\`\`bash
+curl -X GET "http://localhost:3002/v1/bichos/cobra" \\
+  -H "x-api-key: SUA_API_KEY"
+\`\`\`
+
+### Exemplo de Resposta (200 OK):
+\`\`\`json
+[
+  {
+    "grupo": 9,
+    "nome": "Cobra",
+    "dezenas": ["21", "22", "23", "24"]
+  }
+]
+\`\`\`
+
+### Exemplo de Resposta (404 Not Found):
+\`\`\`json
+null
+\`\`\`
+
+### Notas:
+- A busca por nome é case-insensitive (\`COBRA\`, \`cobra\`, \`Cobra\` retornam o mesmo resultado)
+- Se uma dezena pertencer a um grupo, o sistema retorna o bicho correspondente
+- Buscas por dezenas são normalizadas (\`5\` é convertido para \`05\`)
+            `,
+            tags: ['🦁 Bichos'],
             params: z.object({
-                query: z.string().describe('Número do grupo ou dezena')
+                query: z.string().describe('Número do grupo (1-25), dezena (00-99) ou nome do bicho')
             }),
             response: {
                 200: z.array(z.object({
-                    grupo: z.number(),
-                    nome: z.string(),
-                    dezenas: z.array(z.string()),
-                })).describe('Lista de bichos encontrados que coincidem com o grupo ou dezena'),
-                404: z.null().describe('Nenhum bicho encontrado').optional()
+                    grupo: z.number().int().describe('Número do grupo (1-25)'),
+                    nome: z.string().describe('Nome do animal'),
+                    dezenas: z.array(z.string()).describe('Dezenas associadas'),
+                })).describe('Lista de bichos encontrados (geralmente 1 item)'),
+                404: z.null().describe('Nenhum bicho encontrado para a query informada')
             }
         }
     }, async (req, reply) => {

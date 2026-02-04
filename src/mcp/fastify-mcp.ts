@@ -80,7 +80,24 @@ export async function registerMcpRoutes(app: FastifyInstance) {
 
     const numerologyService = new NumerologyService();
     const webhookService = new WebhookService();
-    const sessions = new Map<string, { transport: SSEServerTransport; keepAliveInterval?: NodeJS.Timeout }>();
+    const sessions = new Map<string, { transport: SSEServerTransport; keepAliveInterval?: NodeJS.Timeout; createdAt: number }>();
+    
+    // Cleanup de sessões antigas a cada 5 minutos (evita memory leak)
+    const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutos
+    setInterval(() => {
+        const now = Date.now();
+        let cleanedCount = 0;
+        for (const [id, session] of sessions.entries()) {
+            if (now - session.createdAt > SESSION_TIMEOUT) {
+                if (session.keepAliveInterval) clearInterval(session.keepAliveInterval);
+                sessions.delete(id);
+                cleanedCount++;
+            }
+        }
+        if (cleanedCount > 0) {
+            console.log(`[MCP] 🧹 Cleanup: ${cleanedCount} sessões expiradas removidas`);
+        }
+    }, 5 * 60 * 1000);
     const crypto = await import('node:crypto');
 
     server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -414,7 +431,7 @@ export async function registerMcpRoutes(app: FastifyInstance) {
             }
         }, 30000);
 
-        sessions.set(sessionId, { transport, keepAliveInterval });
+        sessions.set(sessionId, { transport, keepAliveInterval, createdAt: Date.now() });
 
         try {
             await server.connect(transport);
@@ -468,6 +485,16 @@ export async function registerMcpRoutes(app: FastifyInstance) {
             return reply.code(404).send({
                 error: "Session not found",
                 message: "A sessão expirou ou é inválida. Reconecte via /sse"
+            });
+        }
+
+        // Verificar se sessão ainda está ativa
+        if ((session.transport as any).closed) {
+            console.warn(`[MCP] ⚠️ Sessão fechada: ${sessionId}`);
+            sessions.delete(sessionId);
+            return reply.code(410).send({
+                error: "Session closed",
+                message: "A sessão foi fechada. Reconecte via /sse"
             });
         }
 
@@ -743,7 +770,7 @@ export async function registerMcpRoutes(app: FastifyInstance) {
             }
         }, 30000);
 
-        sessions.set(actualSessionId, { transport, keepAliveInterval });
+        sessions.set(actualSessionId, { transport, keepAliveInterval, createdAt: Date.now() });
 
         try {
             await server.connect(transport);
@@ -851,6 +878,16 @@ export async function registerMcpRoutes(app: FastifyInstance) {
             return reply.code(404).send({
                 error: "Session not found",
                 message: "Session expired or invalid"
+            });
+        }
+
+        // Verificar se sessão ainda está ativa
+        if ((session.transport as any).closed) {
+            console.warn(`[MCP Streamable] ⚠️ Sessão fechada: ${sessionId}`);
+            sessions.delete(sessionId);
+            return reply.code(410).send({
+                error: "Session closed",
+                message: "Session was closed"
             });
         }
 

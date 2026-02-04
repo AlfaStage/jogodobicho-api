@@ -1,12 +1,14 @@
 import { ScraperService } from './ScraperService.js';
 import db from '../db.js';
 import { LOTERIAS } from '../config/loterias.js';
+import { logger } from '../utils/logger.js';
 
 export class StartupSyncService {
     private scraperService = new ScraperService();
+    private serviceName = 'StartupSyncService';
 
     async sync(): Promise<void> {
-        console.log('[StartupSyncService] Verificando integridade dos resultados de hoje...');
+        logger.info(this.serviceName, 'Verificando integridade dos resultados de hoje...');
 
         const today = new Date().toISOString().split('T')[0];
 
@@ -25,14 +27,14 @@ export class StartupSyncService {
         }
 
         if (missingLoterias.length > 0) {
-            console.log(`[StartupSyncService] Detectadas ${missingLoterias.length} lotéricas sem resultados hoje: ${missingLoterias.join(', ')}`);
-            console.log('[StartupSyncService] Iniciando sincronização forçada...');
+            logger.warn(this.serviceName, `Detectadas ${missingLoterias.length} lotéricas sem resultados hoje: ${missingLoterias.join(', ')}`);
+            logger.info(this.serviceName, 'Iniciando sincronização forçada...');
 
             // Poderíamos rodar apenas para as faltantes, mas o executeGlobal já lida com INSERT OR IGNORE
             // e garante redundância de fontes.
             await this.scraperService.executeGlobal(false);
         } else {
-            console.log('[StartupSyncService] O banco de dados para hoje já possui registros. Nenhuma ação necessária.');
+            logger.info(this.serviceName, 'O banco de dados para hoje já possui registros. Nenhuma ação necessária.');
         }
     }
 }

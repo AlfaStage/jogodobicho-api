@@ -77,11 +77,11 @@ curl -X GET "http://localhost:3002/v1/resultados?data=2026-02-04&loterica=pt-rio
                     share_url: z.string().url().describe('URL para compartilhamento (HTML embeddable)'),
                     image_url: z.string().url().describe('URL da imagem gerada do resultado'),
                     premios: z.array(z.object({
-                        posicao: z.number().int().min(1).max(7).describe('Posição do prêmio (1-7)'),
-                        milhar: z.string().min(3).max(4).describe('Número sorteado (milhar)'),
-                        grupo: z.number().int().min(1).max(25).describe('Grupo do bicho (1-25)'),
+                        posicao: z.number().int().min(1).describe('Posição do prêmio (1-n)'),
+                        milhar: z.string().describe('Número sorteado (milhar)'),
+                        grupo: z.number().int().describe('Grupo do bicho (1-25)'),
                         bicho: z.string().describe('Nome do bicho'),
-                    })).describe('Array com os 7 prêmios do sorteio')
+                    })).describe('Array com os prêmios do sorteio')
                 })).describe('Lista de resultados encontrados (máx. 20)')
             }
         }
@@ -139,8 +139,8 @@ curl -X GET "http://localhost:3002/v1/resultados?data=2026-02-04&loterica=pt-rio
     // ENDPOINT HTML (IFRAME)
     // ===============
     server.get('/:id/html', {
-        schema: { 
-            summary: 'Obter HTML do Resultado (Iframe)', 
+        schema: {
+            summary: 'Obter HTML do Resultado (Iframe)',
             description: `
 Retorna uma página HTML completa do resultado para embed em iframes.
 
@@ -160,9 +160,9 @@ curl -X GET "http://localhost:3002/v1/resultados/550e8400-e29b-41d4-a716-4466554
   -H "x-api-key: SUA_API_KEY"
 \`\`\`
             `,
-            tags: ['🖼️ Compartilhamento'], 
-            params: z.object({ 
-                id: z.string().uuid().describe('UUID do resultado') 
+            tags: ['🖼️ Compartilhamento'],
+            params: z.object({
+                id: z.string().uuid().describe('UUID do resultado')
             }),
             response: {
                 200: z.string().describe('HTML da página do resultado'),
@@ -190,8 +190,8 @@ curl -X GET "http://localhost:3002/v1/resultados/550e8400-e29b-41d4-a716-4466554
     // ENDPOINT IMAGEM (PNG)
     // ===============
     server.get('/:id/image', {
-        schema: { 
-            summary: 'Obter Imagem do Resultado (PNG)', 
+        schema: {
+            summary: 'Obter Imagem do Resultado (PNG)',
             description: `
 Gera e retorna uma imagem PNG do resultado para compartilhamento em redes sociais.
 
@@ -213,9 +213,9 @@ curl -X GET "http://localhost:3002/v1/resultados/550e8400-e29b-41d4-a716-4466554
 - **Content-Type:** image/png
 - **Tamanho:** Aproximadamente 100-300KB
             `,
-            tags: ['🖼️ Compartilhamento'], 
-            params: z.object({ 
-                id: z.string().uuid().describe('UUID do resultado') 
+            tags: ['🖼️ Compartilhamento'],
+            params: z.object({
+                id: z.string().uuid().describe('UUID do resultado')
             }),
             response: {
                 200: z.any().describe('Imagem PNG em formato binário'),

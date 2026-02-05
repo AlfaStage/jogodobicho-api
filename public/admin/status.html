@@ -50,12 +50,13 @@
             z-index: 100;
         }
 
-        .logo {
-            font-size: 1.25rem;
+        h1 {
+            font-size: 1.5rem;
             font-weight: 700;
-            background: linear-gradient(135deg, #22c55e, #16a34a);
-            background-clip: text;
+            margin: 0;
+            background: linear-gradient(135deg, #22c55e, #4ade80);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -323,6 +324,57 @@
             display: flex;
             align-items: center;
             gap: 4px;
+        }
+
+        /* Detalhes de erros */
+        .erros-container {
+            background: rgba(239, 68, 68, 0.08);
+            border-top: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 12px 16px;
+        }
+
+        .erros-header {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent-red);
+            margin-bottom: 8px;
+        }
+
+        .erro-detalhe {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 0.75rem;
+            align-items: center;
+        }
+
+        .erro-horario {
+            font-weight: 600;
+            min-width: 70px;
+        }
+
+        .erro-tentativas {
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+        }
+
+        .erro-msg {
+            color: var(--accent-red);
+            flex: 1;
+            word-break: break-word;
+        }
+
+        .horario-badge.erro {
+            cursor: pointer;
+        }
+
+        .horario-badge.erro:hover {
+            background: rgba(239, 68, 68, 0.35);
+            transform: scale(1.05);
         }
 
         /* Loterias grid */
@@ -611,14 +663,15 @@
 
 <body>
     <header>
-        <span class="logo">🎰 Jogo do Bicho API</span>
-        <nav>
-            <a href="/admin/template" id="linkTemplate">Template</a>
-            <a href="/admin/webhooks" id="linkWebhooks">Webhooks</a>
-            <a href="/admin/status" id="linkStatus" class="active">Status</a>
-            <a href="/api-docs" id="linkDocs">Docs</a>
-            <a href="/live" id="linkLive">Live</a>
-        </nav>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <h1>Jogo do Bicho</h1>
+            <nav>
+                <a href="/admin/status" id="linkStatus" class="active">Status</a>
+                <a href="/admin/webhooks" id="linkWebhooks">Webhooks</a>
+                <a href="/admin/template" id="linkTemplate">Template</a>
+                <a href="/api-docs" id="linkDocs">API Docs</a>
+            </nav>
+        </div>
     </header>
 
     <main>
@@ -823,20 +876,35 @@
 
                 const badges = lot.horarios.map(h => {
                     let icon = '';
+                    let extraInfo = '';
                     switch (h.status) {
-                        case 'sucesso': icon = '✅'; break;
-                        case 'atraso': icon = '⏰'; break;
+                        case 'sucesso': icon = '✅'; extraInfo = h.fonte ? ` (${h.fonte})` : ''; break;
+                        case 'atraso': icon = '⏰'; extraInfo = ` (${h.tentativas} tentativas)`; break;
                         case 'erro': icon = '❌'; break;
                         case 'pendente': icon = '🔄'; break;
                         case 'futuro': icon = '⏳'; break;
                     }
+
                     const title = h.erro ? `Erro: ${h.erro}` : (h.fonte ? `Fonte: ${h.fonte}` : '');
-                    return `<span class="horario-badge ${h.status}" title="${title}">${icon} ${h.horario}</span>`;
+                    const clickHandler = h.erro ? `onclick="showError('${h.horario}', '${lot.loteria_nome}', '${h.erro?.replace(/'/g, "\\'") || ''}')"` : '';
+
+                    return `<span class="horario-badge ${h.status}" title="${title}" ${clickHandler}>${icon} ${h.horario}</span>`;
                 }).join('');
+
+                // Mostrar erros detalhados se houver
+                const errosDetalhados = lot.horarios
+                    .filter(h => h.status === 'erro' && h.erro)
+                    .map(h => `
+                        <div class="erro-detalhe">
+                            <span class="erro-horario">❌ ${h.horario}</span>
+                            <span class="erro-tentativas">${h.tentativas} tentativa(s)</span>
+                            <span class="erro-msg">${h.erro}</span>
+                        </div>
+                    `).join('');
 
                 return `
                     <div class="loteria-table-card">
-                        <div class="loteria-table-header">
+                        <div class="loteria-table-header" onclick="toggleLoteriaCard('${lot.loteria_slug}')">
                             <h3>${lot.loteria_nome}</h3>
                             <div class="loteria-summary">
                                 ${sucesso > 0 ? `<span style="color: var(--accent-green)">✅ ${sucesso}</span>` : ''}
@@ -849,9 +917,26 @@
                         <div class="horarios-badges">
                             ${badges}
                         </div>
+                        ${errosDetalhados ? `
+                            <div class="erros-container" id="erros-${lot.loteria_slug}" style="display: none;">
+                                <div class="erros-header">⚠️ Detalhes dos Erros</div>
+                                ${errosDetalhados}
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             }).join('');
+        }
+
+        function toggleLoteriaCard(slug) {
+            const errosContainer = document.getElementById(`erros-${slug}`);
+            if (errosContainer) {
+                errosContainer.style.display = errosContainer.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+
+        function showError(horario, loteria, erro) {
+            alert(`Erro em ${loteria} - ${horario}:\n\n${erro}`);
         }
 
         function renderLoterias(loterias) {

@@ -119,7 +119,7 @@ export class GlobalScraper extends ScraperBase {
             rows.each((rowIdx, rowEl) => {
                 const cells = $(rowEl).find('td');
                 const posicao = parseInt($(cells[0]).text().trim());
-                if (isNaN(posicao)) return;
+                if (isNaN(posicao)) return; // No each do cheerio, return pula para o próximo (como continue)
 
                 for (let j = 1; j < cells.length; j++) {
                     if (j - 1 >= headers.length) continue;
@@ -154,13 +154,14 @@ export class GlobalScraper extends ScraperBase {
             const insertPremio = db.prepare('INSERT INTO premios (id, resultado_id, posicao, milhar, grupo, bicho) VALUES (?, ?, ?, ?, ?, ?)');
 
             for (const [horario, premios] of resultadosMap.entries()) {
-                // Validação mínima: Jogo do Bicho tem que ter pelo menos 5 prêmios principais
-                if (premios.length < 5) {
+                // Validação mínima: Pelo menos 1 prêmio para ser considerado sorteio
+                if (premios.length === 0) {
                     continue;
                 }
 
+                logger.info(this.serviceName, `🔍 Processando ${premios.length} prêmios para o horário ${horario}`);
+
                 // OTIMIZAÇÃO: Gravar o MESMO resultado para TODAS as lotéricas que usam esta URL
-                // Isso economiza requisições pois uma página pode ter resultados de múltiplas lotéricas
                 for (const loteria of lotericasComMesmaUrl) {
                     // Verificar se este horário é válido para esta lotérica
                     if (loteria.horarios && !loteria.horarios.includes(horario)) {

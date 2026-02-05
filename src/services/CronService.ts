@@ -4,6 +4,7 @@ import { HoroscopoScraper } from '../scrapers/HoroscopoScraper.js';
 import { ContentScraper } from '../scrapers/ContentScraper.js';
 import { LOTERIAS, LotericaConfig } from '../config/loterias.js';
 import { logger } from '../utils/logger.js';
+import { scrapingStatusService } from './ScrapingStatusService.js';
 import db from '../db.js';
 
 // Interface para rastrear horários específicos pendentes
@@ -112,6 +113,9 @@ export class CronService {
 
                 // Se já passou 1 minuto após o sorteio (usando nowBr)
                 if (nowBr >= minTimeToScrape) {
+                    // Registrar como pendente no status (se ainda não foi)
+                    scrapingStatusService.registerPending(loteria.slug, loteria.nome, horario, dataHoje);
+
                     // Verificar se já temos resultado
                     const exists = checkResult.get(loteria.slug, dataHoje, horario);
 
@@ -119,6 +123,9 @@ export class CronService {
                         // Não temos resultado ainda! Adicionar este horário específico
                         horariosPendentes.push(horario);
                         logger.info(this.serviceName, `Pendente: ${loteria.nome} das ${horario}`);
+                    } else {
+                        // Já temos resultado, marcar como sucesso
+                        scrapingStatusService.registerSuccess(loteria.slug, horario, dataHoje, 'cached', (exists as any).id);
                     }
                 }
             }
@@ -134,7 +141,36 @@ export class CronService {
         if (targets.length > 0) {
             const totalHorarios = targets.reduce((sum, t) => sum + t.horariosPendentes.length, 0);
             logger.info(this.serviceName, `${targets.length} lotéricas com ${totalHorarios} horários pendentes. Iniciando scraping direcionado...`);
+
+            // Registrar tentativa de cada horário
+            for (const target of targets) {
+                for (const horario of target.horariosPendentes) {
+                    scrapingStatusService.registerAttempt(target.loteria.slug, horario, dataHoje);
+                }
+            }
+
+            // Executar scraping
             await this.scraperService.executeTargeted(targets);
+
+            // Verificar resultados após scraping
+            for (const target of targets) {
+                for (const horario of target.horariosPendentes) {
+                    const result = checkResult.get(target.loteria.slug, dataHoje, horario) as { id: string } | undefined;
+
+                    if (result) {
+                        scrapingStatusService.registerSuccess(target.loteria.slug, horario, dataHoje, 'scraper', result.id as any);
+                    } else {
+                        const proximaTentativa = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutos
+                        scrapingStatusService.registerError(
+                            target.loteria.slug,
+                            horario,
+                            dataHoje,
+                            'Resultado não encontrado nas fontes disponíveis',
+                            proximaTentativa
+                        );
+                    }
+                }
+            }
         }
     }
 

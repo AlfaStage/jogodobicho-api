@@ -10,42 +10,42 @@
     style="margin: 0; padding: 0; background-color: transparent; display: flex; justify-content: center; align-items: flex-start; font-family: 'Inter', sans-serif;">
 
     <div
-        style="display: flex; flex-direction: column; width: 350px; background-color: #ffffff; overflow: hidden; box-sizing: border-box;">
+        style="display: flex; flex-direction: column; width: 700px; background-color: #ffffff; overflow: hidden; box-sizing: border-box;">
 
         <!-- Título (Lotérica) - CUSTOMIZE AQUI -->
         <div
-            style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-weight: 700; padding: 10px 0; background-color: #f8f9fa; font-size: 26px; color: #1a1a1a; border-bottom: 1px solid #eeeeee; width: 350px; box-sizing: border-box;">
+            style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-weight: 700; padding: 20px 0; background-color: #f8f9fa; font-size: 52px; color: #1a1a1a; border-bottom: 2px solid #eeeeee; width: 700px; box-sizing: border-box;">
             {{LOTERICA}}
         </div>
 
         <!-- Subtítulo (Data e Horário) - CUSTOMIZE AQUI -->
         <div
-            style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-weight: 700; padding: 10px 0; background-color: #f8f9fa; font-size: 18px; color: #1a1a1a; border-bottom: 1px solid #eeeeee; width: 350px; box-sizing: border-box;">
+            style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-weight: 700; padding: 20px 0; background-color: #f8f9fa; font-size: 36px; color: #1a1a1a; border-bottom: 2px solid #eeeeee; width: 700px; box-sizing: border-box;">
             {{DATA}} - {{HORARIO}}
         </div>
 
         <!-- Tabela de Resultados -->
-        <div style="display: flex; flex-direction: column; width: 350px; box-sizing: border-box;">
+        <div style="display: flex; flex-direction: column; width: 700px; box-sizing: border-box;">
 
             <!-- Cabeçalho - CUSTOMIZE AQUI -->
             <div
-                style="display: flex; flex-direction: row; width: 350px; background-color: #222222; box-sizing: border-box;">
+                style="display: flex; flex-direction: row; width: 700px; background-color: #222222; box-sizing: border-box;">
                 <div
-                    style="display: flex; width: 70px; padding: 14px 4px; justify-content: center; align-items: center; text-align: center; font-weight: 700; font-size: 14px; color: #ffffff; text-transform: uppercase; box-sizing: border-box;">
+                    style="display: flex; width: 140px; padding: 28px 8px; justify-content: center; align-items: center; text-align: center; font-weight: 700; font-size: 28px; color: #ffffff; text-transform: uppercase; box-sizing: border-box;">
                     Prêmio</div>
                 <div
-                    style="display: flex; width: 110px; padding: 14px 4px; justify-content: center; align-items: center; text-align: center; font-weight: 700; font-size: 14px; color: #ffffff; text-transform: uppercase; box-sizing: border-box;">
+                    style="display: flex; width: 220px; padding: 28px 8px; justify-content: center; align-items: center; text-align: center; font-weight: 700; font-size: 28px; color: #ffffff; text-transform: uppercase; box-sizing: border-box;">
                     Milhar</div>
                 <div
-                    style="display: flex; width: 60px; padding: 14px 4px; justify-content: center; align-items: center; text-align: center; font-weight: 700; font-size: 14px; color: #ffffff; text-transform: uppercase; box-sizing: border-box;">
+                    style="display: flex; width: 120px; padding: 28px 8px; justify-content: center; align-items: center; text-align: center; font-weight: 700; font-size: 28px; color: #ffffff; text-transform: uppercase; box-sizing: border-box;">
                     Grupo</div>
                 <div
-                    style="display: flex; width: 110px; padding: 14px 4px; justify-content: center; align-items: center; text-align: center; font-weight: 700; font-size: 14px; color: #ffffff; text-transform: uppercase; box-sizing: border-box;">
+                    style="display: flex; width: 220px; padding: 28px 8px; justify-content: center; align-items: center; text-align: center; font-weight: 700; font-size: 28px; color: #ffffff; text-transform: uppercase; box-sizing: border-box;">
                     Animal</div>
             </div>
 
             <!-- Corpo (Prêmios) -->
-            <div style="display: flex; flex-direction: column; width: 350px; box-sizing: border-box;">
+            <div style="display: flex; flex-direction: column; width: 700px; box-sizing: border-box;">
                 {{PREMIOS}}
             </div>
 
@@ -61,22 +61,23 @@ TEMPLATE DE LINHA DE PRÊMIO - CUSTOMIZE AQUI!
 ========================================================================
 O bloco abaixo será repetido para cada prêmio.
 Variáveis disponíveis: {{POSICAO}}, {{MILHAR}}, {{GRUPO}}, {{BICHO}}
+NOTA: Todos os valores estão em 2x para alta resolução (700px base)
 ========================================================================
 -->
 <!-- PREMIO_ROW -->
 <div
-    style="display: flex; flex-direction: row; width: 350px; background-color: #ffffff; border-bottom: 1px solid #eeeeee; box-sizing: border-box;">
+    style="display: flex; flex-direction: row; width: 700px; background-color: #ffffff; border-bottom: 2px solid #eeeeee; box-sizing: border-box;">
     <div
-        style="display: flex; width: 70px; padding: 14px 4px; justify-content: center; align-items: center; text-align: center; font-size: 16px; color: #666666; box-sizing: border-box;">
+        style="display: flex; width: 140px; padding: 28px 8px; justify-content: center; align-items: center; text-align: center; font-size: 32px; color: #666666; box-sizing: border-box;">
         {{POSICAO}}º</div>
     <div
-        style="display: flex; width: 110px; padding: 14px 4px; justify-content: center; align-items: center; text-align: center; font-weight: bold; font-size: 18px; color: #000000; box-sizing: border-box;">
+        style="display: flex; width: 220px; padding: 28px 8px; justify-content: center; align-items: center; text-align: center; font-weight: bold; font-size: 36px; color: #000000; box-sizing: border-box;">
         {{MILHAR}}</div>
     <div
-        style="display: flex; width: 60px; padding: 14px 4px; justify-content: center; align-items: center; text-align: center; font-size: 16px; color: #666666; box-sizing: border-box;">
+        style="display: flex; width: 120px; padding: 28px 8px; justify-content: center; align-items: center; text-align: center; font-size: 32px; color: #666666; box-sizing: border-box;">
         {{GRUPO}}</div>
     <div
-        style="display: flex; width: 110px; padding: 14px 4px; justify-content: center; align-items: center; text-align: center; font-size: 16px; color: #444444; box-sizing: border-box;">
+        style="display: flex; width: 220px; padding: 28px 8px; justify-content: center; align-items: center; text-align: center; font-size: 32px; color: #444444; box-sizing: border-box;">
         {{BICHO}}</div>
 </div>
 <!-- /PREMIO_ROW -->

@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { RenderService } from '../services/RenderService.js';
+import { scrapingStatusService } from '../services/ScrapingStatusService.js';
 import { logger } from '../utils/logger.js';
 import path from 'path';
 import fs from 'fs';
@@ -35,6 +36,17 @@ export async function adminRoutes(app: FastifyInstance) {
         } catch (error) {
             logger.error('Admin', 'Erro ao carregar template.html:', error);
             return reply.status(500).send({ error: 'Erro ao carregar página de template' });
+        }
+    });
+
+    server.get('/status', async (req, reply) => {
+        try {
+            const html = fs.readFileSync(path.resolve('public/admin/status.html'), 'utf-8');
+            reply.header('Content-Type', 'text/html');
+            return reply.send(html);
+        } catch (error) {
+            logger.error('Admin', 'Erro ao carregar status.html:', error);
+            return reply.status(500).send({ error: 'Erro ao carregar página de status' });
         }
     });
 

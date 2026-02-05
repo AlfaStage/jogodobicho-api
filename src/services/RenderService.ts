@@ -177,12 +177,14 @@ export class RenderService {
         const bodyMatch = cleanHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
         const content = bodyMatch ? bodyMatch[1] : cleanHtml;
 
-        const markup = toReactNode(`<div style="display: flex; flex-direction: column; width: 350px; background-color: transparent;">${content}</div>`) as any;
+        // Wrapper com largura 2x para alta resolução
+        const markup = toReactNode(`<div style="display: flex; flex-direction: column; width: 700px; background-color: transparent;">${content}</div>`) as any;
 
+        // Renderizar SVG em 2x (700px = 350px * 2)
         const svg = await satori(
             markup,
             {
-                width: 350,
+                width: 700,
                 height: undefined,
                 fonts: [
                     {
@@ -201,8 +203,9 @@ export class RenderService {
             }
         );
 
+        // Gerar PNG em resolução 2x (700px)
         const resvg = new Resvg(svg, {
-            fitTo: { mode: 'width', value: 350 },
+            fitTo: { mode: 'width', value: 700 },
         });
 
         return resvg.render().asPng();

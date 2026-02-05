@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status de Scraping - Jogo do Bicho API</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0a;
+            --bg-card: #111111;
+            --bg-card-hover: #1a1a1a;
+            --border-color: #222222;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-yellow: #eab308;
+            --accent-blue: #3b82f6;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Header consistente com admin */
+        header {
+            background: linear-gradient(135deg, #111111 0%, #1a1a1a 100%);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 24px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        nav {
+            display: flex;
+            gap: 8px;
+        }
+
+        nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        nav a:hover,
+        nav a.active {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+
+        /* Main content */
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+        }
+
+        button.secondary {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+        }
+
+        button.secondary:hover {
+            background: var(--bg-card-hover);
+            box-shadow: none;
+        }
+
+        /* Stats cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .stat-value.success {
+            color: var(--accent-green);
+        }
+
+        .stat-value.error {
+            color: var(--accent-red);
+        }
+
+        .stat-value.pending {
+            color: var(--accent-yellow);
+        }
+
+        .stat-sublabel {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            margin-top: 4px;
+        }
+
+        .stat-sublabel.success {
+            color: var(--accent-green);
+        }
+
+        .stat-sublabel.error {
+            color: var(--accent-red);
+        }
+
+        /* Loterias grid */
+        .loterias-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .loteria-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .loteria-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .loteria-header:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .loteria-info h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .loteria-info span {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .loteria-stats {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .mini-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+        }
+
+        .mini-stat .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .mini-stat .dot.success {
+            background: var(--accent-green);
+        }
+
+        .mini-stat .dot.error {
+            background: var(--accent-red);
+        }
+
+        .mini-stat .dot.pending {
+            background: var(--accent-yellow);
+        }
+
+        .chevron {
+            color: var(--text-secondary);
+            transition: transform 0.2s;
+        }
+
+        .loteria-card.expanded .chevron {
+            transform: rotate(180deg);
+        }
+
+        .horarios-table {
+            display: none;
+            padding: 16px 20px;
+        }
+
+        .loteria-card.expanded .horarios-table {
+            display: block;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .status-badge.success {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--accent-green);
+        }
+
+        .status-badge.error {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+        }
+
+        .status-badge.pending {
+            background: rgba(234, 179, 8, 0.15);
+            color: var(--accent-yellow);
+        }
+
+        .status-badge.retrying {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+        }
+
+        .error-details {
+            margin-top: 8px;
+            padding: 12px;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--accent-red);
+        }
+
+        .error-details code {
+            display: block;
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            word-break: break-all;
+        }
+
+        .retry-info {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-top: 4px;
+        }
+
+        .resultado-link {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .resultado-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Loading state */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Auto-refresh indicator */
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .auto-refresh .pulse {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                height: auto;
+                padding: 16px;
+                gap: 16px;
+            }
+
+            nav {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .loteria-stats {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            th,
+            td {
+                padding: 8px;
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <span class="logo">🎰 Jogo do Bicho API</span>
+        <nav>
+            <a href="/admin/template" id="linkTemplate">Template</a>
+            <a href="/admin/webhooks" id="linkWebhooks">Webhooks</a>
+            <a href="/admin/status" id="linkStatus" class="active">Status</a>
+            <a href="/api-docs" id="linkDocs">Docs</a>
+            <a href="/live" id="linkLive">Live</a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Status de Scraping</h1>
+                <p class="page-subtitle" id="dataAtual">Carregando...</p>
+            </div>
+            <div class="header-actions">
+                <div class="auto-refresh">
+                    <span class="pulse"></span>
+                    <span>Atualiza a cada 30s</span>
+                </div>
+                <button class="secondary" onclick="forceRefresh()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                    </svg>
+                    Atualizar
+                </button>
+                <button onclick="forceScrapingAll()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                    </svg>
+                    Forçar Scraping
+                </button>
+            </div>
+        </div>
+
+        <!-- KPIs Principais -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-label">📅 Total do Dia</div>
+                <div class="stat-value" id="statTotalDia">-</div>
+                <div class="stat-sublabel" id="statProcessados">- processados</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">✅ Sucesso</div>
+                <div class="stat-value success" id="statSucesso">-</div>
+                <div class="stat-sublabel success" id="statTaxa">-% taxa</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">❌ Com Erro</div>
+                <div class="stat-value error" id="statErro">-</div>
+                <div class="stat-sublabel error">precisam atenção</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">⏰ Faltando</div>
+                <div class="stat-value pending" id="statFaltando">-</div>
+                <div class="stat-sublabel">horários futuros</div>
+            </div>
+        </div>
+
+        <!-- Loterias -->
+        <div id="loteriasContainer">
+            <div class="loading">
+                <div class="spinner"></div>
+                <span>Carregando status...</span>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Persistência da API Key na URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const apiKey = urlParams.get('key');
+
+        if (apiKey) {
+            document.getElementById('linkTemplate').href = `/admin/template?key=${apiKey}`;
+            document.getElementById('linkWebhooks').href = `/admin/webhooks?key=${apiKey}`;
+            document.getElementById('linkStatus').href = `/admin/status?key=${apiKey}`;
+        }
+
+        async function fetchWithKey(url, options = {}) {
+            if (apiKey) {
+                const separator = url.includes('?') ? '&' : '?';
+                url = `${url}${separator}key=${apiKey}`;
+            }
+            return fetch(url, options);
+        }
+
+        // Atualizar data
+        function updateDataAtual() {
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('dataAtual').textContent =
+                `${now.toLocaleDateString('pt-BR', options)} - Atualizado às ${hora}`;
+        }
+
+        // Carregar status
+        async function loadStatus() {
+            try {
+                const response = await fetchWithKey('/api/status/resumo');
+                if (!response.ok) throw new Error('Falha ao carregar status');
+
+                const data = await response.json();
+
+                // Atualizar KPIs
+                const kpis = data.kpis;
+                document.getElementById('statTotalDia').textContent = kpis.total_dia;
+                document.getElementById('statProcessados').textContent = `${kpis.processados} processados`;
+                document.getElementById('statSucesso').textContent = kpis.sucesso;
+                document.getElementById('statTaxa').textContent = `${kpis.taxa_sucesso}% taxa`;
+                document.getElementById('statErro').textContent = kpis.erro;
+                document.getElementById('statFaltando').textContent = kpis.faltando;
+
+                // Renderizar lotéricas
+                renderLoterias(data.loterias);
+                updateDataAtual();
+
+            } catch (error) {
+                console.error('Erro ao carregar status:', error);
+                document.getElementById('loteriasContainer').innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        <p>Erro ao carregar status: ${error.message}</p>
+                        <button onclick="loadStatus()" style="margin-top: 16px;">Tentar novamente</button>
+                    </div>
+                `;
+            }
+        }
+
+        function renderLoterias(loterias) {
+            if (!loterias || loterias.length === 0) {
+                document.getElementById('loteriasContainer').innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <p>Nenhum scraping registrado hoje.</p>
+                        <p style="margin-top: 8px; font-size: 0.9rem;">O sistema iniciará automaticamente quando os horários chegarem.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = loterias.map(loteria => `
+                <div class="loteria-card" id="card-${loteria.loteria_slug}">
+                    <div class="loteria-header" onclick="toggleCard('${loteria.loteria_slug}')">
+                        <div class="loteria-info">
+                            <h3>${loteria.loteria_nome}</h3>
+                            <span>${loteria.loteria_slug}</span>
+                        </div>
+                        <div class="loteria-stats">
+                            <div class="mini-stat">
+                                <span class="dot success"></span>
+                                <span>${loteria.sucesso}</span>
+                            </div>
+                            <div class="mini-stat">
+                                <span class="dot error"></span>
+                                <span>${loteria.erro}</span>
+                            </div>
+                            <div class="mini-stat">
+                                <span class="dot pending"></span>
+                                <span>${loteria.pendente}</span>
+                            </div>
+                            <svg class="chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="horarios-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Horário</th>
+                                    <th>Status</th>
+                                    <th>Tentativas</th>
+                                    <th>Fonte</th>
+                                    <th>Detalhes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${loteria.horarios.map(h => renderHorario(h)).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('loteriasContainer').innerHTML = `<div class="loterias-grid">${html}</div>`;
+        }
+
+        function renderHorario(h) {
+            const statusClass = h.status;
+            const statusText = {
+                'success': '✅ Sucesso',
+                'error': '❌ Erro',
+                'pending': '⏳ Pendente',
+                'retrying': '🔄 Tentando...'
+            }[h.status] || h.status;
+
+            let detalhes = '-';
+            if (h.status === 'success' && h.resultado_id) {
+                detalhes = `<a href="/live?key=${apiKey || ''}" class="resultado-link">Ver resultado #${h.resultado_id}</a>`;
+            } else if (h.status === 'error' && h.ultimo_erro) {
+                detalhes = `
+                    <div class="error-details">
+                        <strong>Erro:</strong> ${h.ultimo_erro.slice(0, 200)}
+                        ${h.proxima_tentativa ? `<div class="retry-info">Próxima tentativa: ${new Date(h.proxima_tentativa).toLocaleTimeString('pt-BR')}</div>` : ''}
+                    </div>
+                `;
+            }
+
+            return `
+                <tr>
+                    <td><strong>${h.horario}</strong></td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td>${h.tentativas || 0}</td>
+                    <td>${h.fonte_usada || '-'}</td>
+                    <td>${detalhes}</td>
+                </tr>
+            `;
+        }
+
+        function toggleCard(slug) {
+            const card = document.getElementById(`card-${slug}`);
+            card.classList.toggle('expanded');
+        }
+
+        function forceRefresh() {
+            loadStatus();
+        }
+
+        async function forceScrapingAll() {
+            if (!confirm('Isso vai forçar o scraping de TODAS as lotéricas. Continuar?')) return;
+
+            try {
+                const response = await fetchWithKey('/api/status/scraper/force-all', { method: 'POST' });
+                const data = await response.json();
+                alert(data.message || 'Scraping iniciado!');
+                setTimeout(loadStatus, 3000);
+            } catch (error) {
+                alert('Erro ao forçar scraping: ' + error.message);
+            }
+        }
+
+        // Auto-refresh a cada 30 segundos
+        setInterval(loadStatus, 30000);
+
+        // Carregar ao iniciar
+        loadStatus();
+    </script>
+</body>
+
+</html>

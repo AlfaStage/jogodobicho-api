@@ -13,6 +13,7 @@ import { comoJogarRoutes } from './routes/comojogar.js';
 import { numerologiaRoutes } from './routes/numerologia.js';
 import { webhooksRoutes } from './routes/webhooks.js';
 import { adminRoutes } from './routes/admin.js';
+import { statusRoutes } from './routes/status.js';
 import { registerMcpRoutes } from './mcp/fastify-mcp.js';
 import { CronService } from './services/CronService.js';
 import { StartupSyncService } from './services/StartupSyncService.js';
@@ -319,6 +320,7 @@ app.register(numerologiaRoutes, { prefix: '/v1/numerologia' });
 app.register(webhooksRoutes, { prefix: '/v1/webhooks' });
 app.register(comoJogarRoutes, { prefix: '/v1/como-jogar' });
 app.register(adminRoutes, { prefix: '/admin' });
+app.register(statusRoutes, { prefix: '/api/status' });
 
 app.get('/health', {
     schema: {

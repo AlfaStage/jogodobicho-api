@@ -81,7 +81,7 @@ export async function registerMcpRoutes(app: FastifyInstance) {
     const numerologyService = new NumerologyService();
     const webhookService = new WebhookService();
     const sessions = new Map<string, { transport: SSEServerTransport; keepAliveInterval?: NodeJS.Timeout; createdAt: number }>();
-    
+
     // Cleanup de sessões antigas a cada 5 minutos (evita memory leak)
     const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutos
     setInterval(() => {
@@ -396,6 +396,10 @@ export async function registerMcpRoutes(app: FastifyInstance) {
             accept: req.headers.accept
         });
 
+        // CRÍTICO: Hijack da resposta para SSE streaming
+        // Isso impede que o Fastify feche a conexão automaticamente
+        await reply.hijack();
+
         // Headers CORS essenciais para n8n
         const origin = req.headers.origin || '*';
         reply.raw.setHeader('Access-Control-Allow-Origin', origin);
@@ -410,6 +414,9 @@ export async function registerMcpRoutes(app: FastifyInstance) {
         reply.raw.setHeader('X-Accel-Buffering', 'no'); // Desativa buffering no Nginx/Easypanel
         reply.raw.setHeader('X-Content-Type-Options', 'nosniff');
         reply.raw.statusCode = 200;
+
+        // Flush initial headers
+        reply.raw.flushHeaders();
 
         // Criar transport SEM sessionId na URL - o SDK gera automaticamente
         const transport = new SSEServerTransport("/messages", reply.raw);
@@ -436,11 +443,17 @@ export async function registerMcpRoutes(app: FastifyInstance) {
         try {
             await server.connect(transport);
             console.log(`[MCP] ✅ Servidor conectado à sessão: ${sessionId}`);
+
+            // Enviar ping inicial para confirmar que a conexão está ativa
+            if (reply.raw.writable && !reply.raw.writableEnded) {
+                reply.raw.write(':connected\n\n');
+            }
         } catch (err: any) {
             console.error(`[MCP] ❌ Erro ao conectar servidor:`, err.message);
             clearInterval(keepAliveInterval);
             sessions.delete(sessionId);
-            return reply.code(500).send('Failed to initialize MCP server');
+            reply.raw.end();
+            return;
         }
 
         reply.raw.on('close', () => {

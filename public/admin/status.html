@@ -189,6 +189,142 @@
             color: var(--accent-red);
         }
 
+        /* Section title */
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 24px 0 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Histórico grid */
+        .historico-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .historico-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .historico-card .time {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .historico-card .stats {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .historico-card .stat {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .historico-card .stat-label {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .historico-card .stat-value {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        /* Tabela de lotéricas */
+        .loteria-table-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .loteria-table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+        }
+
+        .loteria-table-header:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .loteria-table-header h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .horarios-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 12px 16px;
+        }
+
+        .horario-badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .horario-badge.sucesso {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--accent-green);
+        }
+
+        .horario-badge.atraso {
+            background: rgba(234, 179, 8, 0.2);
+            color: var(--accent-yellow);
+        }
+
+        .horario-badge.erro {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+        }
+
+        .horario-badge.pendente {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
+        .horario-badge.futuro {
+            background: rgba(148, 163, 184, 0.2);
+            color: var(--text-secondary);
+        }
+
+        .loteria-summary {
+            display: flex;
+            gap: 12px;
+            font-size: 0.75rem;
+        }
+
+        .loteria-summary span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
         /* Loterias grid */
         .loterias-grid {
             display: grid;
@@ -535,11 +671,21 @@
             </div>
         </div>
 
-        <!-- Loterias -->
-        <div id="loteriasContainer">
+        <!-- Histórico de Scrapings -->
+        <div class="section-title">📜 Histórico de Execuções</div>
+        <div id="historicoContainer" class="historico-grid">
             <div class="loading">
                 <div class="spinner"></div>
-                <span>Carregando status...</span>
+                <span>Carregando histórico...</span>
+            </div>
+        </div>
+
+        <!-- Tabela de Lotéricas -->
+        <div class="section-title">📋 Status por Lotérica</div>
+        <div id="tabelaContainer">
+            <div class="loading">
+                <div class="spinner"></div>
+                <span>Carregando tabela...</span>
             </div>
         </div>
     </main>
@@ -589,13 +735,17 @@
                 document.getElementById('statErro').textContent = kpis.erro;
                 document.getElementById('statFaltando').textContent = kpis.faltando;
 
-                // Renderizar lotéricas
-                renderLoterias(data.loterias);
+                // Renderizar histórico
+                renderHistorico(data.historico);
+
+                // Renderizar tabela de lotéricas
+                renderTabela(data.tabela);
+
                 updateDataAtual();
 
             } catch (error) {
                 console.error('Erro ao carregar status:', error);
-                document.getElementById('loteriasContainer').innerHTML = `
+                document.getElementById('tabelaContainer').innerHTML = `
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"/>
@@ -607,6 +757,101 @@
                     </div>
                 `;
             }
+        }
+
+        function renderHistorico(historico) {
+            const container = document.getElementById('historicoContainer');
+
+            if (!historico || historico.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1; padding: 24px;">
+                        <p style="color: var(--text-secondary);">Nenhuma execução registrada hoje</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = historico.map(h => {
+                const hora = new Date(h.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const duracao = h.duracao_ms < 1000 ? `${h.duracao_ms}ms` : `${(h.duracao_ms / 1000).toFixed(1)}s`;
+
+                return `
+                    <div class="historico-card">
+                        <div class="time">🕐 ${hora}</div>
+                        <div class="stats">
+                            <div class="stat">
+                                <span class="stat-label">URLs</span>
+                                <span class="stat-value">${h.urls_processadas}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Resultados</span>
+                                <span class="stat-value success">${h.resultados_encontrados}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Erros</span>
+                                <span class="stat-value ${h.erros > 0 ? 'error' : ''}">${h.erros}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Duração</span>
+                                <span class="stat-value">${duracao}</span>
+                            </div>
+                        </div>
+                        ${h.detalhes ? `<div class="time">${h.detalhes}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderTabela(tabela) {
+            const container = document.getElementById('tabelaContainer');
+
+            if (!tabela || tabela.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p style="color: var(--text-secondary);">Nenhuma lotérica configurada</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = tabela.map(lot => {
+                const sucesso = lot.horarios.filter(h => h.status === 'sucesso').length;
+                const atraso = lot.horarios.filter(h => h.status === 'atraso').length;
+                const erro = lot.horarios.filter(h => h.status === 'erro').length;
+                const futuro = lot.horarios.filter(h => h.status === 'futuro').length;
+                const pendente = lot.horarios.filter(h => h.status === 'pendente').length;
+
+                const badges = lot.horarios.map(h => {
+                    let icon = '';
+                    switch (h.status) {
+                        case 'sucesso': icon = '✅'; break;
+                        case 'atraso': icon = '⏰'; break;
+                        case 'erro': icon = '❌'; break;
+                        case 'pendente': icon = '🔄'; break;
+                        case 'futuro': icon = '⏳'; break;
+                    }
+                    const title = h.erro ? `Erro: ${h.erro}` : (h.fonte ? `Fonte: ${h.fonte}` : '');
+                    return `<span class="horario-badge ${h.status}" title="${title}">${icon} ${h.horario}</span>`;
+                }).join('');
+
+                return `
+                    <div class="loteria-table-card">
+                        <div class="loteria-table-header">
+                            <h3>${lot.loteria_nome}</h3>
+                            <div class="loteria-summary">
+                                ${sucesso > 0 ? `<span style="color: var(--accent-green)">✅ ${sucesso}</span>` : ''}
+                                ${atraso > 0 ? `<span style="color: var(--accent-yellow)">⏰ ${atraso}</span>` : ''}
+                                ${erro > 0 ? `<span style="color: var(--accent-red)">❌ ${erro}</span>` : ''}
+                                ${pendente > 0 ? `<span style="color: #3b82f6">🔄 ${pendente}</span>` : ''}
+                                ${futuro > 0 ? `<span style="color: var(--text-secondary)">⏳ ${futuro}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="horarios-badges">
+                            ${badges}
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         function renderLoterias(loterias) {

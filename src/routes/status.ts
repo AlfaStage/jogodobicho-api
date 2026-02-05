@@ -19,11 +19,13 @@ export async function statusRoutes(app: FastifyInstance) {
         }
     }, async (req, reply) => {
         const kpis = scrapingStatusService.getKPIsHoje();
-        const loterias = scrapingStatusService.getResumoHoje();
+        const historico = scrapingStatusService.getHistoricoHoje();
+        const tabela = scrapingStatusService.getTabelaLotericas();
 
         return {
             kpis,
-            loterias
+            historico,
+            tabela
         };
     });
 

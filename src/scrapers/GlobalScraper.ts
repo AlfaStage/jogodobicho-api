@@ -5,16 +5,23 @@ import { WebhookService } from '../services/WebhookService.js';
 import { logger } from '../utils/logger.js';
 import { LOTERIAS, LotericaConfig } from '../config/loterias.js';
 import { LoteriaPendente } from '../services/ScraperService.js';
+import { scrapingStatusService } from '../services/ScrapingStatusService.js';
 
 export class GlobalScraper extends ScraperBase {
     private webhookService = new WebhookService();
     protected serviceName = 'GlobalScraper';
+    private resultadosEncontrados = 0;
+    private erros = 0;
 
     constructor() {
         super('https://www.ojogodobicho.com/resultados.htm');
     }
 
     async execute(targets: LoteriaPendente[] | LotericaConfig[] = LOTERIAS, targetSlug?: string, shouldNotify: boolean = true): Promise<void> {
+        const startTime = Date.now();
+        this.resultadosEncontrados = 0;
+        this.erros = 0;
+
         // Converter para formato padronizado se necessário
         const loteriasPendentes: LoteriaPendente[] = this.isLoteriaPendenteArray(targets)
             ? targets
@@ -28,6 +35,7 @@ export class GlobalScraper extends ScraperBase {
             .map(lp => ({ url: lp.loteria.url!, horariosPendentes: lp.horariosPendentes }));
 
         // Agrupar por URL (podem haver múltiplas lotéricas com a mesma URL)
+        // OTIMIZAÇÃO: Evita fazer scraping da mesma página várias vezes!
         const urlMap = new Map<string, string[]>();
         for (const item of urlsToScrape) {
             const existing = urlMap.get(item.url) || [];
@@ -36,15 +44,31 @@ export class GlobalScraper extends ScraperBase {
             urlMap.set(item.url, merged);
         }
 
+        const urlsUnicas = urlMap.size;
+        logger.info(this.serviceName, `📊 ${loteriasPendentes.length} lotéricas agrupadas em ${urlsUnicas} URLs únicas para economia de requisições`);
+
         for (const [url, horariosPendentes] of urlMap) {
             try {
                 await this.scrapeUrl(url, horariosPendentes, shouldNotify);
             } catch (e) {
+                this.erros++;
                 logger.error(this.serviceName, `Erro ao processar ${url}:`, e);
             }
         }
 
-        logger.success(this.serviceName, 'Varredura finalizada');
+        const duracao = Date.now() - startTime;
+
+        // Registrar histórico da execução
+        scrapingStatusService.registerScrapingRun(
+            'global',
+            urlsUnicas,
+            this.resultadosEncontrados,
+            this.erros,
+            duracao,
+            `${loteriasPendentes.length} lotéricas em ${urlsUnicas} URLs`
+        );
+
+        logger.success(this.serviceName, `Varredura finalizada em ${duracao}ms: ${this.resultadosEncontrados} resultados, ${this.erros} erros`);
     }
 
     private isLoteriaPendenteArray(targets: any[]): targets is LoteriaPendente[] {
@@ -56,11 +80,11 @@ export class GlobalScraper extends ScraperBase {
         const $ = await this.fetchHtmlWithRetry(url);
         if (!$) return;
 
-        // Identificar qual loterica é baseada na URL
-        const config = LOTERIAS.find(l => l.url === url);
-        if (!config) return;
+        // OTIMIZAÇÃO: Encontrar TODAS as lotéricas que usam esta URL
+        const lotericasComMesmaUrl = LOTERIAS.filter(l => l.url === url);
+        if (lotericasComMesmaUrl.length === 0) return;
 
-        let lotericaSlug = config.slug;
+        logger.info(this.serviceName, `📄 URL ${url.split('/').pop()} tem ${lotericasComMesmaUrl.length} lotérica(s) vinculadas`);
 
         const tables = $('table');
 
@@ -104,7 +128,7 @@ export class GlobalScraper extends ScraperBase {
                     if (!horario) continue;
 
                     // Filtrar apenas horários pendentes
-                    if (!horariosPendentes.includes(horario)) return;
+                    if (!horariosPendentes.includes(horario)) continue;
 
                     const cell = $(cells[j]);
                     const conteudo = cell.text().trim();
@@ -135,32 +159,42 @@ export class GlobalScraper extends ScraperBase {
                     continue;
                 }
 
-                db.transaction(() => {
-                    let res = getResultadoId.get(dataIso, horario, lotericaSlug) as { id: string };
-                    if (!res) {
-                        const id = randomUUID();
-                        insertResultado.run(id, dataIso, horario, lotericaSlug);
-
-                        premios.forEach(p => {
-                            insertPremio.run(randomUUID(), id, p.posicao, p.milhar, p.grupo, p.bicho);
-                        });
-
-                        logger.success(this.serviceName, `Gravado: ${lotericaSlug} - ${dataIso} - ${horario}`);
-
-                        if (shouldNotify) {
-                            const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3002}`;
-                            this.webhookService.notifyAll('novo_resultado', {
-                                id,
-                                loterica: lotericaSlug,
-                                data: dataIso,
-                                horario,
-                                premios,
-                                share_url: `${baseUrl}/v1/resultados/${id}/html`,
-                                image_url: `${baseUrl}/v1/resultados/${id}/image`
-                            }).catch(() => { });
-                        }
+                // OTIMIZAÇÃO: Gravar o MESMO resultado para TODAS as lotéricas que usam esta URL
+                // Isso economiza requisições pois uma página pode ter resultados de múltiplas lotéricas
+                for (const loteria of lotericasComMesmaUrl) {
+                    // Verificar se este horário é válido para esta lotérica
+                    if (loteria.horarios && !loteria.horarios.includes(horario)) {
+                        continue;
                     }
-                })();
+
+                    db.transaction(() => {
+                        let res = getResultadoId.get(dataIso, horario, loteria.slug) as { id: string };
+                        if (!res) {
+                            const id = randomUUID();
+                            insertResultado.run(id, dataIso, horario, loteria.slug);
+
+                            premios.forEach(p => {
+                                insertPremio.run(randomUUID(), id, p.posicao, p.milhar, p.grupo, p.bicho);
+                            });
+
+                            this.resultadosEncontrados++;
+                            logger.success(this.serviceName, `Gravado: ${loteria.slug} - ${dataIso} - ${horario}`);
+
+                            if (shouldNotify) {
+                                const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3002}`;
+                                this.webhookService.notifyAll('novo_resultado', {
+                                    id,
+                                    loterica: loteria.slug,
+                                    data: dataIso,
+                                    horario,
+                                    premios,
+                                    share_url: `${baseUrl}/v1/resultados/${id}/html`,
+                                    image_url: `${baseUrl}/v1/resultados/${id}/image`
+                                }).catch(() => { });
+                            }
+                        }
+                    })();
+                }
             }
         }
     }

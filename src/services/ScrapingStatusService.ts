@@ -45,12 +45,61 @@ export class ScrapingStatusService {
             )
         `);
 
-        // Index para consultas rápidas
+        // Tabela de histórico de execuções de scraping
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS scraping_runs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tipo TEXT NOT NULL,
+                urls_processadas INTEGER DEFAULT 0,
+                resultados_encontrados INTEGER DEFAULT 0,
+                erros INTEGER DEFAULT 0,
+                duracao_ms INTEGER DEFAULT 0,
+                detalhes TEXT,
+                created_at TEXT NOT NULL
+            )
+        `);
+
+        // Indexes para consultas rápidas
         db.exec(`CREATE INDEX IF NOT EXISTS idx_scraping_status_data ON scraping_status(data)`);
         db.exec(`CREATE INDEX IF NOT EXISTS idx_scraping_status_slug ON scraping_status(loteria_slug)`);
+        db.exec(`CREATE INDEX IF NOT EXISTS idx_scraping_runs_created ON scraping_runs(created_at)`);
 
-        logger.info(this.serviceName, 'Tabela scraping_status inicializada');
+        logger.info(this.serviceName, 'Tabelas de status inicializadas');
     }
+
+    // Registrar início de uma execução de scraping
+    registerScrapingRun(tipo: string, urlsProcessadas: number, resultadosEncontrados: number, erros: number, duracaoMs: number, detalhes?: string): number {
+        const now = new Date().toISOString();
+
+        const result = db.prepare(`
+            INSERT INTO scraping_runs (tipo, urls_processadas, resultados_encontrados, erros, duracao_ms, detalhes, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(tipo, urlsProcessadas, resultadosEncontrados, erros, duracaoMs, detalhes || null, now);
+
+        return result.lastInsertRowid as number;
+    }
+
+    // Buscar histórico de execuções de hoje
+    getHistoricoHoje(): {
+        id: number;
+        tipo: string;
+        urls_processadas: number;
+        resultados_encontrados: number;
+        erros: number;
+        duracao_ms: number;
+        detalhes: string | null;
+        created_at: string;
+    }[] {
+        const today = this.getTodayString();
+
+        return db.prepare(`
+            SELECT * FROM scraping_runs 
+            WHERE DATE(created_at) = ?
+            ORDER BY created_at DESC
+            LIMIT 50
+        `).all(today) as any[];
+    }
+
 
     // Registrar que vamos tentar buscar um horário
     registerPending(loteriaSlug: string, loteriaNome: string, horario: string, data: string): void {
@@ -264,7 +313,107 @@ export class ScrapingStatusService {
         const dateStr = sevenDaysAgo.toISOString().split('T')[0];
 
         const result = db.prepare('DELETE FROM scraping_status WHERE data < ?').run(dateStr);
+
+        // Limpar também histórico de runs
+        db.prepare('DELETE FROM scraping_runs WHERE DATE(created_at) < ?').run(dateStr);
+
         return result.changes;
+    }
+
+    // Tabela completa de todas as lotéricas com todos os horários
+    getTabelaLotericas(): {
+        loteria_slug: string;
+        loteria_nome: string;
+        horarios: {
+            horario: string;
+            status: 'sucesso' | 'atraso' | 'erro' | 'pendente' | 'futuro';
+            tentativas: number;
+            erro?: string;
+            fonte?: string;
+        }[];
+    }[] {
+        const today = this.getTodayString();
+        const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+        const horaAtualMinutos = now.getHours() * 60 + now.getMinutes();
+
+        // Buscar todos os status de hoje
+        const statusMap = new Map<string, ScrapingStatus>();
+        const statusList = this.getStatusHoje();
+        for (const s of statusList) {
+            statusMap.set(`${s.loteria_slug}:${s.horario}`, s);
+        }
+
+        const resultado: {
+            loteria_slug: string;
+            loteria_nome: string;
+            horarios: {
+                horario: string;
+                status: 'sucesso' | 'atraso' | 'erro' | 'pendente' | 'futuro';
+                tentativas: number;
+                erro?: string;
+                fonte?: string;
+            }[];
+        }[] = [];
+
+        for (const loteria of LOTERIAS) {
+            if (!loteria.horarios || loteria.horarios.length === 0) continue;
+
+            const horariosInfo: {
+                horario: string;
+                status: 'sucesso' | 'atraso' | 'erro' | 'pendente' | 'futuro';
+                tentativas: number;
+                erro?: string;
+                fonte?: string;
+            }[] = [];
+
+            for (const horario of loteria.horarios) {
+                const [h, m] = horario.split(':').map(Number);
+                const minutosHorario = h * 60 + m;
+                const ehFuturo = horaAtualMinutos < minutosHorario + 1;
+
+                const statusKey = `${loteria.slug}:${horario}`;
+                const statusData = statusMap.get(statusKey);
+
+                let status: 'sucesso' | 'atraso' | 'erro' | 'pendente' | 'futuro';
+                let tentativas = 0;
+                let erro: string | undefined;
+                let fonte: string | undefined;
+
+                if (ehFuturo) {
+                    status = 'futuro';
+                } else if (!statusData) {
+                    status = 'pendente';
+                } else if (statusData.status === 'success') {
+                    // Verificar se foi com atraso (mais de 2 tentativas)
+                    status = statusData.tentativas > 2 ? 'atraso' : 'sucesso';
+                    tentativas = statusData.tentativas;
+                    fonte = statusData.fonte_usada || undefined;
+                } else if (statusData.status === 'error') {
+                    status = 'erro';
+                    tentativas = statusData.tentativas;
+                    erro = statusData.ultimo_erro || undefined;
+                } else {
+                    status = 'pendente';
+                    tentativas = statusData.tentativas;
+                }
+
+                horariosInfo.push({
+                    horario,
+                    status,
+                    tentativas,
+                    erro,
+                    fonte
+                });
+            }
+
+            resultado.push({
+                loteria_slug: loteria.slug,
+                loteria_nome: loteria.nome,
+                horarios: horariosInfo.sort((a, b) => a.horario.localeCompare(b.horario))
+            });
+        }
+
+        return resultado.sort((a, b) => a.loteria_nome.localeCompare(b.loteria_nome));
     }
 
     private getTodayString(): string {

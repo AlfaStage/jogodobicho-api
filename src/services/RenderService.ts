@@ -101,6 +101,7 @@ export class RenderService {
                 .replace(/{{BICHO}}/g, String(p.bicho))
                 .replace(/{{INDEX}}/g, String(index))
                 .replace(/{{IS_EVEN}}/g, isEven ? 'true' : 'false')
+                .replace(/{{ROW_BG}}/g, isEven ? '#f9fafb' : '#ffffff')
                 .replace(/{{ROW_CLASS}}/g, isEven ? 'row-even' : 'row-odd');
         }).join('');
     }
@@ -129,8 +130,11 @@ export class RenderService {
         // Se não tem PREMIO_ROW, {{PREMIOS}} fica vazio (template estático)
 
         // Substituição de tokens globais
+        const [y, m, d] = resultado.data.split('-');
+        const dataFormatada = d && m && y ? `${d}/${m}/${y}` : resultado.data;
+
         template = template
-            .replace(/{{DATA}}/g, resultado.data)
+            .replace(/{{DATA}}/g, dataFormatada)
             .replace(/{{HORARIO}}/g, resultado.horario)
             .replace(/{{LOTERICA}}/g, resultado.loterica);
 
@@ -177,7 +181,7 @@ export class RenderService {
         const bodyMatch = cleanHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
         const content = bodyMatch ? bodyMatch[1] : cleanHtml;
 
-        // Wrapper com largura 2x para alta resolução
+        // Wrapper com largura 700px para escala correta
         const markup = toReactNode(`<div style="display: flex; flex-direction: column; width: 700px; background-color: transparent;">${content}</div>`) as any;
 
         // Renderizar SVG em 2x (700px = 350px * 2)

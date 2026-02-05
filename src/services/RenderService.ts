@@ -5,7 +5,10 @@ import { Resvg } from '@resvg/resvg-js';
 import { html as toReactNode } from 'satori-html';
 import { logger } from '../utils/logger.js';
 
-const TEMPLATE_PATH = path.resolve('src/templates/result.html');
+// Template padrão (embutido no código)
+const DEFAULT_TEMPLATE_PATH = path.resolve('src/templates/result.html');
+// Template customizado pelo usuário (persistente)
+const CUSTOM_TEMPLATE_PATH = process.env.TEMPLATE_PATH || path.resolve('data/custom-template.html');
 
 // Fonte Inter (Regular e Bold) para o Satori renderizar corretamente
 const REGULAR_FONT_PATH = path.resolve('src/assets/fonts/Inter-Regular.ttf');
@@ -51,18 +54,24 @@ export class RenderService {
         }
     }
 
-    // Carregar o template HTML
+    // Carregar o template HTML (prioriza customizado, fallback para padrão)
     async getTemplate(): Promise<string> {
-        if (await fs.pathExists(TEMPLATE_PATH)) {
-            return fs.readFile(TEMPLATE_PATH, 'utf-8');
+        // Primeiro tenta carregar o template customizado
+        if (await fs.pathExists(CUSTOM_TEMPLATE_PATH)) {
+            return fs.readFile(CUSTOM_TEMPLATE_PATH, 'utf-8');
+        }
+        // Fallback para o template padrão
+        if (await fs.pathExists(DEFAULT_TEMPLATE_PATH)) {
+            return fs.readFile(DEFAULT_TEMPLATE_PATH, 'utf-8');
         }
         return '<div style="display: flex;">Template não encontrado</div>';
     }
 
-    // Salvar template
+    // Salvar template (salva no caminho customizado para persistência)
     async saveTemplate(html: string): Promise<void> {
-        await fs.ensureDir(path.dirname(TEMPLATE_PATH));
-        await fs.writeFile(TEMPLATE_PATH, html, 'utf-8');
+        await fs.ensureDir(path.dirname(CUSTOM_TEMPLATE_PATH));
+        await fs.writeFile(CUSTOM_TEMPLATE_PATH, html, 'utf-8');
+        logger.success(this.serviceName, `Template salvo em: ${CUSTOM_TEMPLATE_PATH}`);
     }
 
     // Extrair template de linha de prêmio do HTML
@@ -103,27 +112,31 @@ export class RenderService {
         // Tentar extrair template de linha customizado
         const rowExtraction = this.extractRowTemplate(template);
 
-        let premiosHtml: string;
+        let premiosHtml: string = '';
 
         if (rowExtraction) {
-            // Usar template de linha customizado
+            // Usar template de linha customizado para gerar os prêmios
             premiosHtml = this.generatePremiosFromTemplate(rowExtraction.rowTemplate, resultado.premios);
-            template = rowExtraction.htmlWithoutRow.replace(/{{PREMIOS_GENERATED}}/g, premiosHtml);
-        } else {
-            // Fallback: substituir {{PREMIOS}} diretamente (template já tem as linhas prontas)
-            // Isso permite que o usuário coloque as linhas diretamente no HTML
-            premiosHtml = '';
+
+            // Remover o bloco PREMIO_ROW do template final (já foi processado)
+            template = rowExtraction.htmlWithoutRow;
+
+            // Substituir tanto {{PREMIOS_GENERATED}} quanto {{PREMIOS}} pelos prêmios gerados
+            template = template
+                .replace(/{{PREMIOS_GENERATED}}/g, premiosHtml)
+                .replace(/{{PREMIOS}}/g, premiosHtml);
         }
+        // Se não tem PREMIO_ROW, {{PREMIOS}} fica vazio (template estático)
 
         // Substituição de tokens globais
         template = template
             .replace(/{{DATA}}/g, resultado.data)
             .replace(/{{HORARIO}}/g, resultado.horario)
-            .replace(/{{LOTERICA}}/g, resultado.loterica)
-            .replace(/{{PREMIOS}}/g, premiosHtml);
+            .replace(/{{LOTERICA}}/g, resultado.loterica);
 
         return template;
     }
+
 
     // Sanitizar HTML para Satori: garantir que TODOS os divs tenham display: flex
     private sanitizeForSatori(html: string): string {

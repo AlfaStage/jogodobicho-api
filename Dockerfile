@@ -30,12 +30,22 @@ COPY --from=builder /app/src/assets ./src/assets
 COPY --from=builder /app/src/templates ./src/templates
 COPY --from=builder /app/public ./public
 
+# Criar diretório de dados persistentes
+RUN mkdir -p /app/data
+
+# Volume para persistência do banco de dados
+VOLUME ["/app/data"]
+
 # Expor porta da API
 EXPOSE 3002
 
 # Variáveis de ambiente default
 ENV PORT=3002
 ENV NODE_ENV=production
+ENV DATABASE_PATH=/app/data/database.db
+ENV TEMPLATE_PATH=/app/data/custom-template.html
 
 # Comando de entrada
 CMD ["sh", "-c", "node dist/init-db.js && node dist/server.js"]
+
+

@@ -57,12 +57,12 @@ export class WebhookService {
         const id = randomUUID();
         const stmt = db.prepare('INSERT INTO webhooks (id, url) VALUES (?, ?)');
         stmt.run(id, url);
-        
+
         logger.success(this.serviceName, `Webhook registrado: ${url}`);
-        
+
         // Por padrão, ativar todas as lotéricas para este webhook
         await this.enableAllLotericasForWebhook(id);
-        
+
         return id;
     }
 
@@ -74,7 +74,7 @@ export class WebhookService {
     // Listar webhooks com configuração de lotéricas
     listWithConfig(): WebhookWithConfig[] {
         const webhooks = this.list();
-        
+
         return webhooks.map((webhook: any) => {
             const lotericas = this.getWebhookLotericas(webhook.id);
             return {
@@ -98,11 +98,11 @@ export class WebhookService {
     // Ativar todas as lotéricas para um webhook (padrão)
     private async enableAllLotericasForWebhook(webhookId: string): Promise<void> {
         const insertStmt = db.prepare('INSERT OR IGNORE INTO webhook_lotericas (id, webhook_id, loterica_slug, enabled) VALUES (?, ?, ?, ?)');
-        
+
         for (const loteria of LOTERIAS) {
             insertStmt.run(randomUUID(), webhookId, loteria.slug, 1);
         }
-        
+
         logger.info(this.serviceName, `Todas as lotéricas ativadas para webhook: ${webhookId}`);
     }
 
@@ -110,14 +110,14 @@ export class WebhookService {
     setWebhookLotericas(webhookId: string, lotericaSlugs: string[]): void {
         // Desativar todas primeiro
         db.prepare('UPDATE webhook_lotericas SET enabled = 0 WHERE webhook_id = ?').run(webhookId);
-        
+
         // Ativar apenas as selecionadas
         const updateStmt = db.prepare('UPDATE webhook_lotericas SET enabled = 1 WHERE webhook_id = ? AND loterica_slug = ?');
-        
+
         for (const slug of lotericaSlugs) {
             updateStmt.run(webhookId, slug);
         }
-        
+
         logger.info(this.serviceName, `Configuração de lotéricas atualizada para webhook: ${webhookId}`);
     }
 
@@ -129,8 +129,12 @@ export class WebhookService {
             LEFT JOIN webhook_lotericas wl ON l.slug = wl.loterica_slug AND wl.webhook_id = ?
             ORDER BY l.nome
         `;
-        
-        return db.prepare(query).all(webhookId) as any[];
+
+        const results = db.prepare(query).all(webhookId) as any[];
+        return results.map(r => ({
+            ...r,
+            enabled: r.enabled === 1 || r.enabled === true
+        }));
     }
 
     // Verificar se uma lotérica está habilitada para um webhook
@@ -138,16 +142,16 @@ export class WebhookService {
         const result = db.prepare(
             'SELECT enabled FROM webhook_lotericas WHERE webhook_id = ? AND loterica_slug = ?'
         ).get(webhookId, lotericaSlug) as { enabled: number } | undefined;
-        
+
         // Se não existir registro, considerar como habilitado (padrão)
         return result ? result.enabled === 1 : true;
     }
 
     // Registrar log de disparo
     private logWebhookDelivery(
-        webhookId: string, 
-        event: string, 
-        payload: any, 
+        webhookId: string,
+        event: string,
+        payload: any,
         status: 'success' | 'error',
         statusCode?: number,
         responseBody?: string,
@@ -157,7 +161,7 @@ export class WebhookService {
             INSERT INTO webhook_logs (id, webhook_id, event, payload, status, status_code, response_body, error_message)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `);
-        
+
         stmt.run(
             randomUUID(),
             webhookId,
@@ -205,7 +209,7 @@ export class WebhookService {
         const promises = webhooks.map(async (webhook) => {
             // Verificar se a lotérica está habilitada para este webhook
             const lotericaSlug = payload.loterica;
-            
+
             if (lotericaSlug && !this.isLotericaEnabled(webhook.id, lotericaSlug)) {
                 logger.debug(this.serviceName, `Webhook ${webhook.url} ignorado (lotérica ${lotericaSlug} desativada)`);
                 return;

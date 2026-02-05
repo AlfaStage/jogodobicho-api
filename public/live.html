@@ -59,11 +59,18 @@
 <body>
 
     <header>
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <div
-                style="width: 10px; height: 10px; background: #00ff00; border-radius: 50%; box-shadow: 0 0 10px #00ff00;">
-            </div>
-            <h1>Resultados Ao Vivo</h1>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <h1>Jogo do Bicho</h1>
+            <nav class="nav">
+                <a href="/admin/webhooks" id="linkWebhooks">Webhooks</a>
+                <a href="/admin/template" id="linkTemplate">Template</a>
+                <a href="/api-docs" id="linkDocs">API Docs</a>
+                <a href="/live" class="active">
+                    <span
+                        style="display: inline-block; width: 8px; height: 8px; background: #00ff00; border-radius: 50%; box-shadow: 0 0 6px #00ff00; margin-right: 5px;"></span>
+                    Ao Vivo
+                </a>
+            </nav>
         </div>
         <div class="date-display" id="currentDate" style="color: var(--text-secondary); font-weight: 500;">Carregando...
         </div>

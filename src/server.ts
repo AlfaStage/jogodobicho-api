@@ -280,11 +280,13 @@ app.register(swaggerUi, {
     }
 });
 
+
 // Middleware de Auth
 app.addHook('onRequest', async (request, reply) => {
     // Permitir rotas públicas
     if (
         request.url.startsWith('/docs') ||
+        request.url.startsWith('/api-docs') ||
         request.url.startsWith('/health') ||
         request.url.startsWith('/live') || // Página ao vivo
         request.url.startsWith('/css') || // CSS global
@@ -344,6 +346,13 @@ app.get('/health', {
 
 app.get('/live', async (req, reply) => {
     const html = fs.readFileSync(path.resolve('public/live.html'), 'utf-8');
+    reply.header('Content-Type', 'text/html');
+    return reply.send(html);
+});
+
+// Página de documentação com header customizado
+app.get('/api-docs', async (req, reply) => {
+    const html = fs.readFileSync(path.resolve('public/api-docs.html'), 'utf-8');
     reply.header('Content-Type', 'text/html');
     return reply.send(html);
 });

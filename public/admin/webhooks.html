@@ -320,8 +320,8 @@
         <div style="display: flex; align-items: center; gap: 20px;">
             <h1>Jogo do Bicho</h1>
             <nav class="nav">
-                <a href="/admin/webhooks" class="active">Webhooks</a>
-                <a href="/admin/template">Template</a>
+                <a href="/admin/webhooks" id="linkWebhooks" class="active">Webhooks</a>
+                <a href="/admin/template" id="linkTemplate">Template</a>
                 <a href="/live" target="_blank">Ao Vivo ↗</a>
             </nav>
         </div>
@@ -397,9 +397,28 @@
         let allLotericas = [];
         let selectedLotericas = [];
 
+        // Persistência da API Key na URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const apiKey = urlParams.get('key');
+
+        if (apiKey) {
+            // Atualizar links da nav
+            document.getElementById('linkWebhooks').href = `/admin/webhooks?key=${apiKey}`;
+            document.getElementById('linkTemplate').href = `/admin/template?key=${apiKey}`;
+        }
+
+        // Wrapper para fetch que inclui a key na query string
+        async function fetchWithKey(url, options = {}) {
+            if (apiKey) {
+                const separator = url.includes('?') ? '&' : '?';
+                url = `${url}${separator}key=${apiKey}`;
+            }
+            return fetch(url, options);
+        }
+
         async function loadWebhooks() {
             try {
-                const res = await fetch(`${API_URL}/with-config`);
+                const res = await fetchWithKey(`${API_URL}/with-config`);
                 const webhooks = await res.json();
                 const list = document.getElementById('webhookList');
                 list.innerHTML = '';
@@ -412,7 +431,7 @@
                 webhooks.forEach(w => {
                     const enabledCount = w.lotericas.filter(l => l.enabled).length;
                     const totalCount = w.lotericas.length;
-                    
+
                     const div = document.createElement('div');
                     div.className = 'webhook-item';
                     div.innerHTML = `
@@ -462,16 +481,16 @@
 
         async function openConfigModal(webhookId) {
             currentWebhookId = webhookId;
-            
+
             try {
                 // Carregar webhook específico com suas lotéricas
-                const res = await fetch(`${API_URL}/${webhookId}`);
+                const res = await fetchWithKey(`${API_URL}/${webhookId}`);
                 const webhook = await res.json();
-                
+
                 selectedLotericas = webhook.lotericas
                     .filter(l => l.enabled)
                     .map(l => l.slug);
-                
+
                 renderLotericasCheckboxes(webhook.lotericas);
                 document.getElementById('configModal').classList.add('active');
             } catch (err) {
@@ -483,7 +502,7 @@
         function renderLotericasCheckboxes(lotericas) {
             const container = document.getElementById('lotericasContainer');
             container.innerHTML = '';
-            
+
             lotericas.forEach(l => {
                 const div = document.createElement('div');
                 div.className = 'loterica-checkbox';
@@ -512,7 +531,7 @@
         function toggleAllLotericas() {
             const checkboxes = document.querySelectorAll('#lotericasContainer input[type="checkbox"]');
             const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-            
+
             checkboxes.forEach(cb => {
                 cb.checked = !allChecked;
                 updateSelectedLotericas(cb.value, !allChecked);
@@ -521,9 +540,9 @@
 
         async function saveLotericasConfig() {
             if (!currentWebhookId) return;
-            
+
             try {
-                const res = await fetch(`${API_URL}/${currentWebhookId}/lotericas`, {
+                const res = await fetchWithKey(`${API_URL}/${currentWebhookId}/lotericas`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ lotericas: selectedLotericas })
@@ -543,11 +562,11 @@
 
         async function openHistoryModal(webhookId) {
             currentWebhookId = webhookId;
-            
+
             try {
-                const res = await fetch(`${API_URL}/${webhookId}/history?limit=50`);
+                const res = await fetchWithKey(`${API_URL}/${webhookId}/history?limit=50`);
                 const history = await res.json();
-                
+
                 renderHistory(history);
                 document.getElementById('historyModal').classList.add('active');
             } catch (err) {
@@ -558,21 +577,21 @@
 
         function renderHistory(history) {
             const container = document.getElementById('historyContainer');
-            
+
             if (history.length === 0) {
                 container.innerHTML = '<div class="empty-state">Nenhum disparo registrado ainda.</div>';
                 return;
             }
-            
+
             container.innerHTML = '';
-            
+
             history.forEach(item => {
                 const div = document.createElement('div');
                 div.className = `history-item ${item.status}`;
-                
+
                 const date = new Date(item.created_at);
                 const formattedDate = date.toLocaleString('pt-BR');
-                
+
                 div.innerHTML = `
                     <div>
                         <div><strong>${item.event}</strong></div>
@@ -604,7 +623,7 @@
             btn.disabled = true;
 
             try {
-                const res = await fetch(API_URL, {
+                const res = await fetchWithKey(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url })
@@ -629,7 +648,7 @@
             if (!confirm('Deseja realmente remover este webhook?')) return;
 
             try {
-                await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                await fetchWithKey(`${API_URL}/${id}`, { method: 'DELETE' });
                 loadWebhooks();
             } catch (err) {
                 console.error(err);

@@ -295,7 +295,7 @@ app.addHook('onRequest', async (request, reply) => {
         request.url === '/favicon.ico'
     ) return;
 
-    const apiKey = request.headers['x-api-key'];
+    const apiKey = request.headers['x-api-key'] || (request.query as any)?.key;
     const envKey = process.env.API_KEY;
 
     // Se tiver KEY no env, validar. Se não tiver, liberar (ou vice versa dependendo do rigor)

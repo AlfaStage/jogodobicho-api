@@ -77,8 +77,8 @@
         <div style="display: flex; align-items: center; gap: 20px;">
             <h1>Jogo do Bicho</h1>
             <nav class="nav">
-                <a href="/admin/webhooks">Webhooks</a>
-                <a href="/admin/template" class="active">Template</a>
+                <a href="/admin/webhooks" id="linkWebhooks">Webhooks</a>
+                <a href="/admin/template" id="linkTemplate" class="active">Template</a>
                 <a href="/live" target="_blank">Ao Vivo ↗</a>
             </nav>
         </div>
@@ -132,34 +132,29 @@
         </div>
     </div>
 
-    <script>
-        const EDITOR = document.getElementById('codeEditor');
-        const IFRAME = document.getElementById('iframePreview');
-        const IMG = document.getElementById('imagePreview');
-        const STATUS = document.getElementById('status');
+        // Persistência da API Key na URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const apiKey = urlParams.get('key');
 
-        const DEFAULT_TEMPLATE = `<!DOCTYPE html>
-<html>
-<head>
-<style>
-  body { font-family: sans-serif; background: #fff; padding: 20px; }
-  .card { border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
-  h1 { color: #333; }
-</style>
-</head>
-<body>
-  <div class="card">
-    <h1>Resultado: {{LOTERICA}}</h1>
-    <p>{{DATA}} - {{HORARIO}}</p>
-    <ul>{{PREMIOS}}</ul>
-  </div>
-</body>
-</html>`;
+        if (apiKey) {
+            // Atualizar links da nav
+            document.getElementById('linkWebhooks').href = `/admin/webhooks?key=${apiKey}`;
+            document.getElementById('linkTemplate').href = `/admin/template?key=${apiKey}`;
+        }
+
+        // Wrapper para fetch que inclui a key na query string
+        async function fetchWithKey(url, options = {}) {
+            if (apiKey) {
+                const separator = url.includes('?') ? '&' : '?';
+                url = `${url}${separator}key=${apiKey}`;
+            }
+            return fetch(url, options);
+        }
 
         // Carregar template atual
         async function loadTemplate() {
             try {
-                const res = await fetch('/admin/api/template');
+                const res = await fetchWithKey('/admin/api/template');
                 if (res.ok) {
                     const data = await res.json();
                     EDITOR.value = data.html || DEFAULT_TEMPLATE;
@@ -181,7 +176,7 @@
             STATUS.innerText = 'Gerando...';
 
             try {
-                const res = await fetch('/admin/api/preview', {
+                const res = await fetchWithKey('/admin/api/preview', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ html })
@@ -213,7 +208,7 @@
             const html = EDITOR.value;
 
             try {
-                const res = await fetch('/admin/api/template', {
+                const res = await fetchWithKey('/admin/api/template', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ html })

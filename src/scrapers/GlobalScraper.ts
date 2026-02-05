@@ -16,8 +16,8 @@ export class GlobalScraper extends ScraperBase {
 
     async execute(targets: LoteriaPendente[] | LotericaConfig[] = LOTERIAS, targetSlug?: string, shouldNotify: boolean = true): Promise<void> {
         // Converter para formato padronizado se necessário
-        const loteriasPendentes: LoteriaPendente[] = this.isLoteriaPendenteArray(targets) 
-            ? targets 
+        const loteriasPendentes: LoteriaPendente[] = this.isLoteriaPendenteArray(targets)
+            ? targets
             : (targets as LotericaConfig[]).map(l => ({ loteria: l, horariosPendentes: l.horarios || [] }));
 
         logger.info(this.serviceName, `Iniciando varredura global (${loteriasPendentes.length} lotéricas)...`);
@@ -148,11 +148,15 @@ export class GlobalScraper extends ScraperBase {
                         logger.success(this.serviceName, `Gravado: ${lotericaSlug} - ${dataIso} - ${horario}`);
 
                         if (shouldNotify) {
+                            const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3002}`;
                             this.webhookService.notifyAll('novo_resultado', {
+                                id,
                                 loterica: lotericaSlug,
                                 data: dataIso,
                                 horario,
-                                premios
+                                premios,
+                                share_url: `${baseUrl}/v1/resultados/${id}/html`,
+                                image_url: `${baseUrl}/v1/resultados/${id}/image`
                             }).catch(() => { });
                         }
                     }

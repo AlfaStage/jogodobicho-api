@@ -17,8 +17,8 @@ export class GigaBichoScraper extends ScraperBase {
 
     async execute(targets: LoteriaPendente[] | LotericaConfig[] = LOTERIAS, targetSlug?: string, shouldNotify: boolean = true): Promise<void> {
         // Converter para formato padronizado se necessário
-        const loteriasPendentes: LoteriaPendente[] = this.isLoteriaPendenteArray(targets) 
-            ? targets 
+        const loteriasPendentes: LoteriaPendente[] = this.isLoteriaPendenteArray(targets)
+            ? targets
             : (targets as LotericaConfig[]).map(l => ({ loteria: l, horariosPendentes: l.horarios || [] }));
 
         logger.info(this.serviceName, `Iniciando varredura (${loteriasPendentes.length} lotéricas)...`);
@@ -26,10 +26,10 @@ export class GigaBichoScraper extends ScraperBase {
         // Pegar URLs do GigaBicho dos alvos
         const urlsToScrape = loteriasPendentes
             .filter(lp => lp.loteria.urlGigaBicho)
-            .map(lp => ({ 
-                url: lp.loteria.urlGigaBicho!, 
+            .map(lp => ({
+                url: lp.loteria.urlGigaBicho!,
                 slug: lp.loteria.slug,
-                horariosPendentes: lp.horariosPendentes 
+                horariosPendentes: lp.horariosPendentes
             }));
 
         if (targetSlug) {
@@ -204,11 +204,15 @@ export class GigaBichoScraper extends ScraperBase {
 
             // Webhook opcional
             if (shouldNotify) {
-                this.webhookService.notifyAll('resultado.novo', {
-                    loteria: loteriaSlug,
+                const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3002}`;
+                this.webhookService.notifyAll('novo_resultado', {
+                    id: resultadoId,
+                    loterica: loteriaSlug,
                     data,
                     horario,
-                    premios
+                    premios,
+                    share_url: `${baseUrl}/v1/resultados/${resultadoId}/html`,
+                    image_url: `${baseUrl}/v1/resultados/${resultadoId}/image`
                 }).catch(() => { });
             }
 

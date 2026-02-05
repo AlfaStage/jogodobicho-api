@@ -12,7 +12,8 @@ export async function adminRoutes(app: FastifyInstance) {
 
     // Página inicial redireciona para template
     server.get('/', async (req, reply) => {
-        return reply.redirect('/admin/template');
+        const queryString = new URL(req.url, 'http://localhost').search;
+        return reply.redirect(`/admin/template${queryString}`);
     });
 
     server.get('/webhooks', async (req, reply) => {
@@ -58,8 +59,8 @@ curl -X GET "http://localhost:3002/admin/api/template"
             `,
             tags: ['⚙️ Admin'],
             response: {
-                200: z.object({ 
-                    html: z.string().describe('Template HTML completo') 
+                200: z.object({
+                    html: z.string().describe('Template HTML completo')
                 })
             }
         }
@@ -91,12 +92,12 @@ curl -X POST "http://localhost:3002/admin/api/template" \\
 \`\`\`
             `,
             tags: ['⚙️ Admin'],
-            body: z.object({ 
-                html: z.string().describe('HTML do template completo') 
+            body: z.object({
+                html: z.string().describe('HTML do template completo')
             }),
             response: {
-                200: z.object({ 
-                    message: z.string() 
+                200: z.object({
+                    message: z.string()
                 })
             }
         }
@@ -134,8 +135,8 @@ curl -X POST "http://localhost:3002/admin/api/preview" \\
 \`\`\`
             `,
             tags: ['⚙️ Admin'],
-            body: z.object({ 
-                html: z.string().describe('HTML do template para preview') 
+            body: z.object({
+                html: z.string().describe('HTML do template para preview')
             }),
             response: {
                 200: z.object({

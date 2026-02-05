@@ -150,12 +150,16 @@ export class OjogodobichoScraper extends ScraperBase {
                         logger.success(this.serviceName, `Novo resultado salvo: ${lotericaSlug} ${horario}`);
 
                         if (shouldNotify) {
+                            const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3002}`;
                             // Fire and forget webhook
                             this.webhookService.notifyAll('novo_resultado', {
+                                id: resultId,
                                 loterica: lotericaSlug,
                                 data: dataIso,
                                 horario: horario,
-                                premios: prizesData
+                                premios: prizesData,
+                                share_url: `${baseUrl}/v1/resultados/${resultId}/html`,
+                                image_url: `${baseUrl}/v1/resultados/${resultId}/image`
                             }).catch((err: any) => logger.error(this.serviceName, 'Erro webhook:', err.message));
                         }
                     }

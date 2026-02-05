@@ -292,10 +292,13 @@ app.addHook('onRequest', async (request, reply) => {
         request.url.startsWith('/sse') || // MCP SSE
         request.url.startsWith('/messages') || // MCP Messages
         request.url.startsWith('/mcp') || // MCP HTTP endpoints (health, tools, execute, streamable)
+        request.url.match(/^\/v1\/resultados\/[a-f0-9-]{36}\/(html|image)/) || // Compartilhamento público
         request.url === '/favicon.ico'
     ) return;
-
-    const apiKey = request.headers['x-api-key'] || (request.query as any)?.key;
+    // Capturar API Key do header ou da query string (precisa de parsing manual no onRequest)
+    const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
+    const queryKey = url.searchParams.get('key');
+    const apiKey = request.headers['x-api-key'] || queryKey;
     const envKey = process.env.API_KEY;
 
     // Se tiver KEY no env, validar. Se não tiver, liberar (ou vice versa dependendo do rigor)

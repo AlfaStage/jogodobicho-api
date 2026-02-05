@@ -33,14 +33,14 @@ export const LOTERIAS: LotericaConfig[] = [
         nome: 'PT-SP (São Paulo)',
         urlGigaBicho: 'https://www.gigabicho.com.br/jogo-do-bicho-sao-paulo/',
         urlResultadoFacil: 'https://www.resultadofacil.com.br/resultado-do-jogo-do-bicho/sp',
-        horarios: ['08:00', '10:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00']
+        horarios: ['08:00', '10:00', '12:20', '13:00', '15:20', '17:20', '19:00', '20:00']
     },
     {
         id: 'sp-bandeirantes',
         slug: 'bandeirantes',
         nome: 'Bandeirantes (São Paulo)',
         urlResultadoFacil: 'https://www.resultadofacil.com.br/resultado-do-jogo-do-bicho/sp',
-        horarios: ['15:30']
+        horarios: ['15:20']
     },
     // --- Goiás (GO) ---
     {
@@ -49,7 +49,7 @@ export const LOTERIAS: LotericaConfig[] = [
         nome: 'Look Goiás',
         urlGigaBicho: 'https://www.gigabicho.com.br/resultado-look-loterias-hoje/',
         urlResultadoFacil: 'https://www.resultadofacil.com.br/resultado-do-jogo-do-bicho/go',
-        horarios: ['07:00', '09:00', '11:00', '14:00', '16:00', '18:00', '21:00', '23:00']
+        horarios: ['07:20', '09:20', '11:20', '14:20', '16:20', '18:20', '21:20', '23:20']
     },
     {
         id: 'go-boasorte',
@@ -177,7 +177,7 @@ export const LOTERIAS: LotericaConfig[] = [
         nome: 'LBR Loterias (Brasília)',
         urlGigaBicho: 'https://www.gigabicho.com.br/lbr-loterias/',
         urlResultadoFacil: 'https://www.resultadofacil.com.br/resultado-do-jogo-do-bicho/df',
-        horarios: ['00:40', '07:30', '08:30', '10:00', '12:40', '13:00', '15:00', '17:00', '19:00', '20:40', '22:00', '23:00']
+        horarios: ['08:40', '10:40', '12:40', '13:40', '15:40', '17:40', '20:40', '22:40']
     },
     // --- Rio Grande do Norte (RN) ---
     {

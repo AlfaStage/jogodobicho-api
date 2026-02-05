@@ -390,17 +390,8 @@ export async function registerMcpRoutes(app: FastifyInstance) {
         const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
 
         console.log(`[MCP] 🟢 Nova conexão SSE solicitada | IP: ${clientIp}`);
-        console.log(`[MCP] Headers:`, {
-            origin: req.headers.origin,
-            'user-agent': req.headers['user-agent']?.slice(0, 50),
-            accept: req.headers.accept
-        });
 
-        // CRÍTICO: Hijack da resposta para SSE streaming
-        // Isso impede que o Fastify feche a conexão automaticamente
-        await reply.hijack();
-
-        // Headers CORS essenciais para n8n
+        // Headers CORS essenciais para n8n e outros clients
         const origin = req.headers.origin || '*';
         reply.raw.setHeader('Access-Control-Allow-Origin', origin);
         reply.raw.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -411,25 +402,24 @@ export async function registerMcpRoutes(app: FastifyInstance) {
         reply.raw.setHeader('Content-Type', 'text/event-stream');
         reply.raw.setHeader('Cache-Control', 'no-cache, no-transform');
         reply.raw.setHeader('Connection', 'keep-alive');
-        reply.raw.setHeader('X-Accel-Buffering', 'no'); // Desativa buffering no Nginx/Easypanel
+        reply.raw.setHeader('X-Accel-Buffering', 'no');
         reply.raw.setHeader('X-Content-Type-Options', 'nosniff');
-        reply.raw.statusCode = 200;
 
-        // Flush initial headers
-        reply.raw.flushHeaders();
+        // CRÍTICO: Hijack da resposta ANTES de qualquer flush ou envio do SDK
+        // Isso impede que o Fastify tente fechar a conexão automaticamente
+        await reply.hijack();
 
-        // Criar transport SEM sessionId na URL - o SDK gera automaticamente
+        // Criar transport - o SDK vai gerenciar o flush inicial se necessário
+        // mas como já definimos os headers básicos, ele deve apenas começar a transmitir
         const transport = new SSEServerTransport("/messages", reply.raw);
-
-        // O SDK gera o sessionId internamente e expõe via transport.sessionId
         const sessionId = transport.sessionId;
         console.log(`[MCP] 📋 Session ID gerado pelo SDK: ${sessionId}`);
 
-        // Keep-alive a cada 30 segundos para manter conexão aberta (n8n, proxies)
+        // Keep-alive a cada 30 segundos (enviado diretamente no raw stream)
         const keepAliveInterval = setInterval(() => {
             try {
                 if (reply.raw.writable && !reply.raw.writableEnded) {
-                    reply.raw.write(':ping\n\n'); // Comentário SSE (não dispara evento)
+                    reply.raw.write(':ping\n\n');
                 }
             } catch (err) {
                 console.log(`[MCP] Keep-alive falhou para ${sessionId}, limpando...`);
@@ -443,16 +433,13 @@ export async function registerMcpRoutes(app: FastifyInstance) {
         try {
             await server.connect(transport);
             console.log(`[MCP] ✅ Servidor conectado à sessão: ${sessionId}`);
-
-            // Enviar ping inicial para confirmar que a conexão está ativa
-            if (reply.raw.writable && !reply.raw.writableEnded) {
-                reply.raw.write(':connected\n\n');
-            }
         } catch (err: any) {
-            console.error(`[MCP] ❌ Erro ao conectar servidor:`, err.message);
+            console.error(`[MCP] ❌ Erro ao conectar servidor na sessão ${sessionId}:`, err.message);
             clearInterval(keepAliveInterval);
             sessions.delete(sessionId);
-            reply.raw.end();
+            if (!reply.raw.writableEnded) {
+                reply.raw.end();
+            }
             return;
         }
 

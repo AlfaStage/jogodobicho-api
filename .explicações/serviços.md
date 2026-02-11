@@ -19,3 +19,16 @@
 ## RenderService
 - **Arquivo:** `src/services/RenderService.ts`
 - **Função:** Gera HTML e imagens (PNG) para compartilhamento de resultados usando Satori e Resvg.
+
+## ProxyService
+- **Arquivo:** `src/services/ProxyService.ts`
+- **Função:** Gerencia pool de proxies para rotação durante scraping.
+- **Funcionalidades:**
+  - CRUD de proxies (individual e em massa)
+  - Rotação round-robin e aleatória entre proxies habilitados
+  - Parsing de múltiplos formatos: `http://user:pass@host:port`, `host:port:user:pass`, `host:port`
+  - Tracking de sucesso/erro por proxy
+  - Toggle de habilitação/desabilitação
+  - Integrado automaticamente no `ScraperBase.fetchHtmlWithRetry()`
+- **Rota Admin:** `/admin/proxies/*` (CRUD)
+- **Página Admin:** `/admin/proxies-page` (Gerenciamento visual)

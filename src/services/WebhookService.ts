@@ -259,6 +259,68 @@ export class WebhookService {
         logger.info(this.serviceName, `Disparo de webhooks finalizado para evento "${event}"`);
     }
 
+    // Disparar teste para um webhook específico
+    async testWebhook(id: string): Promise<any> {
+        const webhook = this.getById(id);
+        if (!webhook) throw new Error('Webhook não encontrado');
+
+        const event = 'teste_conexao';
+        const fullPayload = {
+            event,
+            timestamp: new Date().toISOString(),
+            data: {
+                mensagem: "Isso é um teste de funcionamento do webhook.",
+                api_version: "1.0",
+                projeto: "Jogo do Bicho API"
+            }
+        };
+
+        try {
+            const response = await axios.post(webhook.url, fullPayload, {
+                timeout: 10000,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'JogoDoBicho-API/1.0',
+                    'X-Webhook-Event': event
+                }
+            });
+
+            this.logWebhookDelivery(
+                webhook.id,
+                event,
+                fullPayload,
+                'success',
+                response.status,
+                JSON.stringify(response.data)
+            );
+
+            return {
+                status: 'success',
+                http_code: response.status,
+                response: response.data
+            };
+        } catch (err: any) {
+            const statusCode = err.response?.status;
+            const errorMessage = err.message || 'Erro desconhecido';
+
+            this.logWebhookDelivery(
+                webhook.id,
+                event,
+                fullPayload,
+                'error',
+                statusCode,
+                err.response?.data ? JSON.stringify(err.response.data) : undefined,
+                errorMessage
+            );
+
+            throw {
+                status: 'error',
+                http_code: statusCode,
+                message: errorMessage
+            };
+        }
+    }
+
     // Limpar logs antigos (manter últimos X dias)
     cleanupOldLogs(daysToKeep: number = 30): void {
         const stmt = db.prepare(`

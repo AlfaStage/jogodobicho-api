@@ -81,9 +81,11 @@ export class RenderService {
         const match = html.match(regex);
 
         if (match) {
+            // Remove ALL occurrences of the PREMIO_ROW block (global), not just the first
+            const globalRegex = /<!-- PREMIO_ROW -->[\s\S]*?<!-- \/PREMIO_ROW -->/g;
             return {
                 rowTemplate: match[1].trim(),
-                htmlWithoutRow: html.replace(regex, '{{PREMIOS_GENERATED}}')
+                htmlWithoutRow: html.replace(globalRegex, '')
             };
         }
         return null;
@@ -119,15 +121,15 @@ export class RenderService {
             // Usar template de linha customizado para gerar os prêmios
             premiosHtml = this.generatePremiosFromTemplate(rowExtraction.rowTemplate, resultado.premios);
 
-            // Remover o bloco PREMIO_ROW do template final (já foi processado)
+            // O bloco PREMIO_ROW já foi removido globalmente pelo extractRowTemplate
             template = rowExtraction.htmlWithoutRow;
 
-            // Substituir tanto {{PREMIOS_GENERATED}} quanto {{PREMIOS}} pelos prêmios gerados
-            template = template
-                .replace(/{{PREMIOS_GENERATED}}/g, premiosHtml)
-                .replace(/{{PREMIOS}}/g, premiosHtml);
+            // Substituir {{PREMIOS}} pelo conteúdo gerado (only place it should appear)
+            template = template.replace(/{{PREMIOS}}/g, premiosHtml);
+        } else {
+            // Se não tem PREMIO_ROW, garantimos que {{PREMIOS}} não apareça como texto puro
+            template = template.replace(/{{PREMIOS}}/g, '');
         }
-        // Se não tem PREMIO_ROW, {{PREMIOS}} fica vazio (template estático)
 
         // Substituição de tokens globais
         const [y, m, d] = resultado.data.split('-');
@@ -138,7 +140,11 @@ export class RenderService {
             .replace(/{{HORARIO}}/g, resultado.horario)
             .replace(/{{LOTERICA}}/g, resultado.loterica);
 
-        return template;
+        // Limpeza final: remover qualquer bloco PREMIO_ROW residual e tokens não processados
+        return template
+            .replace(/<!-- PREMIO_ROW -->[\s\S]*?<!-- \/PREMIO_ROW -->/gi, '')
+            .replace(/{{PREMIOS_GENERATED}}/g, '')
+            .replace(/{{PREMIOS}}/g, '');
     }
 
 

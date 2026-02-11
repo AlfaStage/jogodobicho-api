@@ -14,6 +14,8 @@ import { numerologiaRoutes } from './routes/numerologia.js';
 import { webhooksRoutes } from './routes/webhooks.js';
 import { adminRoutes } from './routes/admin.js';
 import { statusRoutes } from './routes/status.js';
+import { proxiesRoutes } from './routes/proxies.js';
+import { proxyService } from './services/ProxyService.js';
 import { registerMcpRoutes } from './mcp/fastify-mcp.js';
 import { CronService } from './services/CronService.js';
 import { StartupSyncService } from './services/StartupSyncService.js';
@@ -298,6 +300,8 @@ app.addHook('onRequest', async (request, reply) => {
         request.url.match(/^\/v1\/resultados\/[a-f0-9-]{36}\/(html|image)/) || // Compartilhamento público
         request.url === '/favicon.ico'
     ) return;
+    // Admin pages use ?key= query param for auth (checked below)
+    // The auth hook already supports query param via url.searchParams.get('key')
     // Capturar API Key do header ou da query string (precisa de parsing manual no onRequest)
     const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
     const queryKey = url.searchParams.get('key');
@@ -321,6 +325,7 @@ app.register(webhooksRoutes, { prefix: '/v1/webhooks' });
 app.register(comoJogarRoutes, { prefix: '/v1/como-jogar' });
 app.register(adminRoutes, { prefix: '/admin' });
 app.register(statusRoutes, { prefix: '/api/status' });
+app.register(proxiesRoutes, { prefix: '/admin/proxies' });
 
 app.get('/health', {
     schema: {
@@ -405,6 +410,9 @@ const start = async () => {
             syncService.sync().catch(err => logger.error('StartupSyncService', 'Erro na sincronização inicial:', err));
         }
 
+        // Iniciar scheduler de proxies (coleta automática + testes)
+        proxyService.startScheduler();
+
         logger.success('Server', `Server running at http://localhost:${port}`);
         logger.info('Server', `Docs running at http://localhost:${port}/docs`);
         logger.info('Server', `MCP SSE available at http://localhost:${port}/sse`);
@@ -432,6 +440,9 @@ const gracefulShutdown = async (signal: string) => {
             logger.info('Server', 'Parando CronService...');
             cronService.stop();
         }
+
+        // Parar scheduler de proxies
+        proxyService.stopScheduler();
 
         logger.success('Server', 'Shutdown completo');
         process.exit(0);

@@ -1,6 +1,8 @@
 import { GlobalScraper } from '../scrapers/GlobalScraper.js';
 import { GigaBichoScraper } from '../scrapers/GigaBichoScraper.js';
 import { ResultadoFacilScraper } from '../scrapers/ResultadoFacilScraper.js';
+import { LoteriaNacionalScraper } from '../scrapers/LoteriaNacionalScraper.js';
+import { BichoCertoScraper } from '../scrapers/BichoCertoScraper.js';
 import { HoroscopoScraper } from '../scrapers/HoroscopoScraper.js';
 import { logger } from '../utils/logger.js';
 import { LotericaConfig } from '../config/loterias.js';
@@ -15,6 +17,8 @@ export class ScraperService {
     private primary = new GlobalScraper();
     private secondary = new GigaBichoScraper();
     private tertiary = new ResultadoFacilScraper();
+    private quaternary = new LoteriaNacionalScraper();
+    private quinary = new BichoCertoScraper();
     private horoscopo = new HoroscopoScraper();
     private serviceName = 'ScraperService';
 
@@ -36,6 +40,27 @@ export class ScraperService {
             await this.secondary.execute(targets, undefined, shouldNotify);
         } catch (e) {
             logger.error(this.serviceName, 'Erro no Secondary (Targeted):', e);
+        }
+
+        // Executar Tertiary (ResultadoFacil) apenas para os targets e horários específicos como fallback
+        try {
+            await this.tertiary.execute(targets, undefined, shouldNotify);
+        } catch (e) {
+            logger.error(this.serviceName, 'Erro no Tertiary (Targeted):', e);
+        }
+
+        // Executar Quaternary (LoteriaNacional) apenas para os targets e horários específicos como fallback
+        try {
+            await this.quaternary.execute(targets, undefined, shouldNotify);
+        } catch (e) {
+            logger.error(this.serviceName, 'Erro no Quaternary (Targeted):', e);
+        }
+
+        // Executar Quinary (BichoCerto) apenas para os targets e horários específicos como fallback
+        try {
+            await this.quinary.execute(targets, undefined, shouldNotify);
+        } catch (e) {
+            logger.error(this.serviceName, 'Erro no Quinary (Targeted):', e);
         }
     }
 
@@ -63,7 +88,21 @@ export class ScraperService {
             logger.error(this.serviceName, 'Erro no Tertiary (ResultadoFacil):', e);
         }
 
-        // 4. Horóscopo (números da sorte por signo)
+        // 4. LoteriaNacional (Quaternary - Fallback)
+        try {
+            await this.quaternary.execute(undefined, undefined, shouldNotify);
+        } catch (e) {
+            logger.error(this.serviceName, 'Erro no Quaternary (LoteriaNacional):', e);
+        }
+
+        // 5. BichoCerto (Quinary - Fallback)
+        try {
+            await this.quinary.execute(undefined, undefined, shouldNotify);
+        } catch (e) {
+            logger.error(this.serviceName, 'Erro no Quinary (BichoCerto):', e);
+        }
+
+        // 6. Horóscopo (números da sorte por signo)
         try {
             await this.horoscopo.execute();
         } catch (e) {

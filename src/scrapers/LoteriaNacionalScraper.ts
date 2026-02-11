@@ -6,45 +6,30 @@ import { LOTERIAS, LotericaConfig } from '../config/loterias.js';
 import { LoteriaPendente } from '../services/ScraperService.js';
 import { logger } from '../utils/logger.js';
 
-export class ResultadoFacilScraper extends ScraperBase {
+export class LoteriaNacionalScraper extends ScraperBase {
     private webhookService = new WebhookService();
-    protected serviceName = 'ResultadoFacilScraper';
+    protected serviceName = 'LoteriaNacionalScraper';
 
     constructor() {
-        super('https://www.resultadofacil.com.br/');
+        super('https://www.loterianacional.com.br/');
     }
 
     async execute(targets: LoteriaPendente[] | LotericaConfig[] = LOTERIAS, targetSlug?: string, shouldNotify: boolean = true): Promise<void> {
         logger.info(this.serviceName, 'Iniciando varredura...');
 
-        // Converter para formato padronizado se necessário
         const loteriasPendentes: LoteriaPendente[] = this.isLoteriaPendenteArray(targets)
             ? targets
             : (targets as LotericaConfig[]).map(l => ({ loteria: l, horariosPendentes: l.horarios || [] }));
 
-        // Pegar loterias com URL do ResultadoFacil (por estado OU direto por banca)
-        const loteriasAlvo = loteriasPendentes.filter(lp => lp.loteria.urlResultadoFacil || lp.loteria.urlResultadoFacilDireto);
+        const loteriasAlvo = loteriasPendentes.filter(lp => lp.loteria.urlLoteriaNacional);
 
         for (const lp of loteriasAlvo) {
-            let success = false;
-
-            // Tenta primeiro por URL de estado (se disponível)
-            if (lp.loteria.urlResultadoFacil) {
-                try {
-                    success = await this.scrapeUrl(lp.loteria.urlResultadoFacil, lp.loteria, lp.horariosPendentes, shouldNotify);
-                } catch (e: any) {
-                    logger.warn(this.serviceName, `Falha no URL por estado para ${lp.loteria.nome}: ${e.message}`);
+            try {
+                if (lp.loteria.urlLoteriaNacional) {
+                    await this.scrapeUrl(lp.loteria.urlLoteriaNacional, lp.loteria, lp.horariosPendentes, shouldNotify);
                 }
-            }
-
-            // Se não teve sucesso e tem URL direto por banca, usa como fallback
-            if (!success && lp.loteria.urlResultadoFacilDireto) {
-                try {
-                    logger.info(this.serviceName, `Tentando URL direto por banca para ${lp.loteria.nome}...`);
-                    await this.scrapeUrl(lp.loteria.urlResultadoFacilDireto, lp.loteria, lp.horariosPendentes, shouldNotify);
-                } catch (e: any) {
-                    logger.warn(this.serviceName, `Falha no URL direto para ${lp.loteria.nome}: ${e.message}`);
-                }
+            } catch (e: any) {
+                logger.warn(this.serviceName, `Falha ao acessar ${lp.loteria.nome}: ${e.message}`);
             }
         }
     }
@@ -60,15 +45,10 @@ export class ResultadoFacilScraper extends ScraperBase {
             'Referer': 'https://www.google.com/'
         };
 
-        // Forçar 403 para cair no browser fallback localmente se necessário, 
-        // mas aqui vamos usar o fetchHtmlWithRetry que já gerencia isso
         const $ = await this.fetchHtmlWithRetry(url, headers);
         if (!$) return false;
 
         logger.info(this.serviceName, `Página carregada: ${loteria.nome} (${loteria.slug})`);
-
-        // No Resultado Fácil, os resultados geralmente vêm em tabelas dentro de blocos
-        // Vamos procurar por tabelas e tentar identificar o horário pelo título próximo (h3, h4 ou texto)
 
         const tables = $('table');
         const dataHojeIso = new Date().toISOString().split('T')[0];
@@ -77,19 +57,20 @@ export class ResultadoFacilScraper extends ScraperBase {
         tables.each((i, tableEl) => {
             const table = $(tableEl);
 
-            // Tentar achar o horário no h3/h4 anterior ou no texto da célula de cabeçalho
-            let textoContexto = table.prevAll('h3, h4, .title, .header').first().text().trim();
+            // Tenta achar o horário no elemento anterior ou cabeçalho da tabela
+            let textoContexto = table.prevAll('h2, h3, h4, .title, .header').first().text().trim();
             if (!textoContexto) {
                 textoContexto = table.find('caption').text().trim() || table.find('th').first().text().trim();
             }
 
-            // Procurar por padrão de horário (11:20 ou 11h20)
-            const horarioMatch = textoContexto.match(/(\d{1,2})[h:](\d{2})/i);
+            // Melhorado para capturar '9 horas', '9h', '9:00', '9'
+            const horarioMatch = textoContexto.match(/(\d{1,2})\s*(?:[h:](\d{1,2})|horas)?/i);
             if (!horarioMatch) return;
 
-            const horario = `${horarioMatch[1].padStart(2, '0')}:${horarioMatch[2]}`;
+            const hora = horarioMatch[1].padStart(2, '0');
+            const minuto = horarioMatch[2] ? horarioMatch[2].padStart(2, '0') : '00';
+            const horario = `${hora}:${minuto}`;
 
-            // Verificar se este horário é o que estamos procurando
             if (!horariosPendentes.includes(horario)) return;
 
             logger.info(this.serviceName, `Identificado horário ${horario} na tabela ${i}`);
@@ -153,7 +134,7 @@ export class ResultadoFacilScraper extends ScraperBase {
                 insertPremio.run(randomUUID(), resultadoId, p.posicao, p.milhar, p.grupo, p.bicho);
             }
 
-            logger.success(this.serviceName, `Gravado como FALLBACK: ${loteriaSlug} - ${data} ${horario} (${premios.length} prêmios)`);
+            logger.success(this.serviceName, `Gravado como REDUNDÂNCIA: ${loteriaSlug} - ${data} ${horario} (${premios.length} prêmios)`);
 
             if (shouldNotify) {
                 const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3002}`;
@@ -169,7 +150,7 @@ export class ResultadoFacilScraper extends ScraperBase {
             }
 
         } catch (error) {
-            logger.error(this.serviceName, 'Erro ao salvar resultado (fallback):', error);
+            logger.error(this.serviceName, 'Erro ao salvar resultado (redundância):', error);
         }
     }
 }

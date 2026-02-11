@@ -3,6 +3,7 @@ import * as cheerio from 'cheerio';
 import { LotericaConfig } from '../config/loterias.js';
 import { logger } from '../utils/logger.js';
 import { getBrowserScraper } from './BrowserScraper.js';
+import { proxyService } from '../services/ProxyService.js';
 
 // Removed Prisma types
 
@@ -37,7 +38,7 @@ export abstract class ScraperBase {
         await new Promise(resolve => setTimeout(resolve, delay));
     }
 
-    // Fetch com retry infinito e backoff exponencial
+    // Fetch com retry + proxy como FALLBACK (só após falha sem proxy)
     protected async fetchHtmlWithRetry(
         url: string = this.baseUrl,
         customHeaders: Record<string, string> = {},
@@ -51,27 +52,37 @@ export abstract class ScraperBase {
         }
 
         let attempt = 0;
+        let useProxy = false; // Starts without proxy
 
         while (true) {
+            const axiosConfig: any = {
+                headers: {
+                    'User-Agent': this.getRandomUserAgent(),
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1',
+                    ...customHeaders
+                },
+                timeout: 30000,
+            };
+
+            // Only use proxy after first failure in this request cycle
+            const proxy = useProxy ? proxyService.getNextProxy() : null;
+            if (proxy) {
+                axiosConfig.proxy = proxyService.buildAxiosProxy(proxy);
+            }
+
             try {
                 await this.randomDelay(1500, 5000);
 
-                const { data } = await axios.get(url, {
-                    headers: {
-                        'User-Agent': this.getRandomUserAgent(),
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-                        'Accept-Encoding': 'gzip, deflate, br',
-                        'Connection': 'keep-alive',
-                        'Upgrade-Insecure-Requests': '1',
-                        ...customHeaders
-                    },
-                    timeout: 30000,
-                });
+                const { data } = await axios.get(url, axiosConfig);
 
-                // Reset contador de falhas em caso de sucesso
                 this.failureCount = 0;
                 this.useBrowserFallback = false;
+
+                if (proxy) proxyService.recordSuccess(proxy.id);
 
                 return cheerio.load(data);
             } catch (error: any) {
@@ -79,9 +90,20 @@ export abstract class ScraperBase {
                 this.failureCount++;
                 const status = error.response?.status;
 
+                if (proxy) proxyService.recordError(proxy.id, `${status || 'timeout'}: ${error.message?.substring(0, 100)}`);
+
                 if (status && silentCodes.includes(status)) {
                     this.failureCount = 0;
                     return null;
+                }
+
+                // After FIRST failure, enable proxy usage for subsequent retries
+                if (!useProxy && attempt >= 1) {
+                    const aliveProxies = proxyService.listAlive();
+                    if (aliveProxies.length > 0) {
+                        useProxy = true;
+                        logger.info(this.serviceName, `Falha sem proxy. Ativando ${aliveProxies.length} proxies para retry...`);
+                    }
                 }
 
                 // Após 5 falhas consecutivas, ativar browser fallback
@@ -93,7 +115,7 @@ export abstract class ScraperBase {
 
                 const backoffMs = Math.min(Math.pow(2, attempt) * 1000, 60000);
 
-                logger.warn(this.serviceName, `Tentativa ${attempt} falhou para ${url}. Status: ${status || 'timeout'}. Aguardando ${backoffMs / 1000}s antes de retry...`);
+                logger.warn(this.serviceName, `Tentativa ${attempt} falhou para ${url}. Status: ${status || 'timeout'}${proxy ? ` (proxy ${proxy.host}:${proxy.port})` : ' (sem proxy)'}. Retry em ${backoffMs / 1000}s...`);
 
                 await new Promise(resolve => setTimeout(resolve, backoffMs));
             }

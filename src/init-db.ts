@@ -67,6 +67,30 @@ const schema = `
     UNIQUE(webhook_id, loterica_slug)
   );
 
+  -- Tabela de proxies para scraping
+  CREATE TABLE IF NOT EXISTS proxies (
+    id TEXT PRIMARY KEY,
+    protocol TEXT NOT NULL DEFAULT 'http',
+    host TEXT NOT NULL,
+    port INTEGER NOT NULL,
+    username TEXT,
+    password TEXT,
+    label TEXT,
+    source TEXT NOT NULL DEFAULT 'Manual',
+    country TEXT DEFAULT 'BR',
+    enabled BOOLEAN DEFAULT 1,
+    alive BOOLEAN DEFAULT 0,
+    latency_ms INTEGER,
+    score INTEGER DEFAULT 50,
+    last_tested_at DATETIME,
+    last_used_at DATETIME,
+    last_error TEXT,
+    success_count INTEGER DEFAULT 0,
+    error_count INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(host, port)
+  );
+
   -- Índices para melhorar performance
   CREATE INDEX IF NOT EXISTS idx_resultados_data ON resultados(data);
   CREATE INDEX IF NOT EXISTS idx_resultados_loterica_slug ON resultados(loterica_slug);

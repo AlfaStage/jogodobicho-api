@@ -5,14 +5,14 @@ import { WebhookService } from '../services/WebhookService.js';
 import { LOTERIAS } from '../config/loterias.js';
 
 export async function webhooksRoutes(app: FastifyInstance) {
-    const server = app.withTypeProvider<ZodTypeProvider>();
-    const service = new WebhookService();
+  const server = app.withTypeProvider<ZodTypeProvider>();
+  const service = new WebhookService();
 
-    // Registrar novo webhook
-    server.post('/', {
-        schema: {
-            summary: '📝 Registrar Novo Webhook',
-            description: `
+  // Registrar novo webhook
+  server.post('/', {
+    schema: {
+      summary: '📝 Registrar Novo Webhook',
+      description: `
 Registra um novo URL para receber notificações em tempo real quando novos resultados forem sincronizados.
 
 ### Como Funciona:
@@ -65,32 +65,32 @@ curl -X POST "http://localhost:3002/v1/webhooks" \\
 - Implemente verificação do payload no seu endpoint
 - Mantenha logs dos eventos recebidos para auditoria
             `,
-            tags: ['🪝 Webhooks'],
-            body: z.object({
-                url: z.string().url().describe('URL HTTPS de destino que receberá as notificações POST')
-            }),
-            response: {
-                201: z.object({ 
-                    message: z.string().describe('Mensagem de sucesso'),
-                    id: z.string().uuid().describe('ID único do webhook criado')
-                }).describe('Webhook registrado com sucesso'),
-                400: z.object({
-                    error: z.string(),
-                    message: z.string()
-                }).describe('URL inválida ou malformada')
-            }
-        }
-    }, async (req, reply) => {
-        const { url } = req.body;
-        const id = await service.register(url);
-        return reply.status(201).send({ message: 'Webhook registrado com sucesso', id });
-    });
+      tags: ['🪝 Webhooks'],
+      body: z.object({
+        url: z.string().url().describe('URL HTTPS de destino que receberá as notificações POST')
+      }),
+      response: {
+        201: z.object({
+          message: z.string().describe('Mensagem de sucesso'),
+          id: z.string().uuid().describe('ID único do webhook criado')
+        }).describe('Webhook registrado com sucesso'),
+        400: z.object({
+          error: z.string(),
+          message: z.string()
+        }).describe('URL inválida ou malformada')
+      }
+    }
+  }, async (req, reply) => {
+    const { url } = req.body;
+    const id = await service.register(url);
+    return reply.status(201).send({ message: 'Webhook registrado com sucesso', id });
+  });
 
-    // Listar webhooks
-    server.get('/', {
-        schema: {
-            summary: '📋 Listar Webhooks',
-            description: `
+  // Listar webhooks
+  server.get('/', {
+    schema: {
+      summary: '📋 Listar Webhooks',
+      description: `
 Retorna a lista de todos os webhooks registrados no sistema.
 
 ### Exemplo de Requisição:
@@ -119,24 +119,24 @@ curl -X GET "http://localhost:3002/v1/webhooks" \\
 - Esta rota retorna apenas informações básicas de cada webhook
 - Para ver a configuração completa (incluindo lotéricas habilitadas), use GET /webhooks/{id}
             `,
-            tags: ['🪝 Webhooks'],
-            response: {
-                200: z.array(z.object({
-                    id: z.string().uuid().describe('ID único do webhook'),
-                    url: z.string().url().describe('URL registrada para callback'),
-                    created_at: z.string().describe('Data e hora de criação (ISO 8601)')
-                })).describe('Lista de webhooks registrados')
-            }
-        }
-    }, async () => {
-        return service.list() as any[];
-    });
+      tags: ['🪝 Webhooks'],
+      response: {
+        200: z.array(z.object({
+          id: z.string().uuid().describe('ID único do webhook'),
+          url: z.string().url().describe('URL registrada para callback'),
+          created_at: z.string().describe('Data e hora de criação (ISO 8601)')
+        })).describe('Lista de webhooks registrados')
+      }
+    }
+  }, async () => {
+    return service.list() as any[];
+  });
 
-    // Listar webhooks com configuração completa (para admin)
-    server.get('/with-config', {
-        schema: {
-            summary: '⚙️ Listar Webhooks com Configuração Completa',
-            description: `
+  // Listar webhooks com configuração completa (para admin)
+  server.get('/with-config', {
+    schema: {
+      summary: '⚙️ Listar Webhooks com Configuração Completa',
+      description: `
 Retorna todos os webhooks com suas configurações de lotéricas.
 
 Útil para visualização administrativa do estado completo dos webhooks.
@@ -163,29 +163,29 @@ curl -X GET "http://localhost:3002/v1/webhooks/with-config" \\
 ]
 \`\`\`
             `,
-            tags: ['🪝 Webhooks'],
-            response: {
-                200: z.array(z.object({
-                    id: z.string().uuid(),
-                    url: z.string().url(),
-                    created_at: z.string(),
-                    lotericas: z.array(z.object({
-                        slug: z.string().describe('Slug da lotérica'),
-                        nome: z.string().describe('Nome da lotérica'),
-                        enabled: z.boolean().describe('Se está habilitada para este webhook')
-                    }))
-                })).describe('Lista completa de webhooks com configurações')
-            }
-        }
-    }, async () => {
-        return service.listWithConfig();
-    });
+      tags: ['🪝 Webhooks'],
+      response: {
+        200: z.array(z.object({
+          id: z.string().uuid(),
+          url: z.string().url(),
+          created_at: z.string(),
+          lotericas: z.array(z.object({
+            slug: z.string().describe('Slug da lotérica'),
+            nome: z.string().describe('Nome da lotérica'),
+            enabled: z.boolean().describe('Se está habilitada para este webhook')
+          }))
+        })).describe('Lista completa de webhooks com configurações')
+      }
+    }
+  }, async () => {
+    return service.listWithConfig();
+  });
 
-    // Obter detalhes de um webhook específico
-    server.get('/:id', {
-        schema: {
-            summary: '🔍 Obter Webhook Específico',
-            description: `
+  // Obter detalhes de um webhook específico
+  server.get('/:id', {
+    schema: {
+      summary: '🔍 Obter Webhook Específico',
+      description: `
 Obtém detalhes completos de um webhook específico, incluindo sua configuração de lotéricas.
 
 ### Exemplo de Requisição:
@@ -216,47 +216,47 @@ curl -X GET "http://localhost:3002/v1/webhooks/550e8400-e29b-41d4-a716-446655440
 }
 \`\`\`
             `,
-            tags: ['🪝 Webhooks'],
-            params: z.object({
-                id: z.string().uuid().describe('ID do webhook (UUID)')
-            }),
-            response: {
-                200: z.object({
-                    id: z.string().uuid(),
-                    url: z.string().url(),
-                    created_at: z.string(),
-                    lotericas: z.array(z.object({
-                        slug: z.string(),
-                        nome: z.string(),
-                        enabled: z.boolean()
-                    }))
-                }).describe('Detalhes completos do webhook'),
-                404: z.object({ 
-                    error: z.string().describe('Mensagem de erro') 
-                }).describe('Webhook não encontrado')
-            }
-        }
-    }, async (req, reply) => {
-        const { id } = req.params;
-        const webhook = service.getById(id);
-        
-        if (!webhook) {
-            return reply.status(404).send({ error: 'Webhook não encontrado' });
-        }
+      tags: ['🪝 Webhooks'],
+      params: z.object({
+        id: z.string().uuid().describe('ID do webhook (UUID)')
+      }),
+      response: {
+        200: z.object({
+          id: z.string().uuid(),
+          url: z.string().url(),
+          created_at: z.string(),
+          lotericas: z.array(z.object({
+            slug: z.string(),
+            nome: z.string(),
+            enabled: z.boolean()
+          }))
+        }).describe('Detalhes completos do webhook'),
+        404: z.object({
+          error: z.string().describe('Mensagem de erro')
+        }).describe('Webhook não encontrado')
+      }
+    }
+  }, async (req, reply) => {
+    const { id } = req.params;
+    const webhook = service.getById(id);
 
-        const lotericas = service.getWebhookLotericas(id);
-        
-        return {
-            ...webhook,
-            lotericas
-        };
-    });
+    if (!webhook) {
+      return reply.status(404).send({ error: 'Webhook não encontrado' });
+    }
 
-    // Atualizar configuração de lotéricas de um webhook
-    server.put('/:id/lotericas', {
-        schema: {
-            summary: '✏️ Configurar Lotéricas do Webhook',
-            description: `
+    const lotericas = service.getWebhookLotericas(id);
+
+    return {
+      ...webhook,
+      lotericas
+    };
+  });
+
+  // Atualizar configuração de lotéricas de um webhook
+  server.put('/:id/lotericas', {
+    schema: {
+      summary: '✏️ Configurar Lotéricas do Webhook',
+      description: `
 Define quais lotéricas irão disparar notificações para este webhook.
 
 Apenas as lotéricas incluídas no array receberão notificações quando houverem novos resultados.
@@ -293,40 +293,40 @@ curl -X PUT "http://localhost:3002/v1/webhooks/550e8400-e29b-41d4-a716-446655440
 - \`lotece\` - Lotece (Ceará)
 - \`ceara\` - Ceará
             `,
-            tags: ['🪝 Webhooks'],
-            params: z.object({
-                id: z.string().uuid().describe('ID do webhook (UUID)')
-            }),
-            body: z.object({
-                lotericas: z.array(z.string()).describe('Array de slugs de lotéricas que devem disparar notificações para este webhook')
-            }),
-            response: {
-                200: z.object({ 
-                    message: z.string().describe('Confirmação de sucesso') 
-                }).describe('Configuração atualizada'),
-                404: z.object({ 
-                    error: z.string() 
-                }).describe('Webhook não encontrado')
-            }
-        }
-    }, async (req, reply) => {
-        const { id } = req.params;
-        const { lotericas } = req.body;
+      tags: ['🪝 Webhooks'],
+      params: z.object({
+        id: z.string().uuid().describe('ID do webhook (UUID)')
+      }),
+      body: z.object({
+        lotericas: z.array(z.string()).describe('Array de slugs de lotéricas que devem disparar notificações para este webhook')
+      }),
+      response: {
+        200: z.object({
+          message: z.string().describe('Confirmação de sucesso')
+        }).describe('Configuração atualizada'),
+        404: z.object({
+          error: z.string()
+        }).describe('Webhook não encontrado')
+      }
+    }
+  }, async (req, reply) => {
+    const { id } = req.params;
+    const { lotericas } = req.body;
 
-        const webhook = service.getById(id);
-        if (!webhook) {
-            return reply.status(404).send({ error: 'Webhook não encontrado' });
-        }
+    const webhook = service.getById(id);
+    if (!webhook) {
+      return reply.status(404).send({ error: 'Webhook não encontrado' });
+    }
 
-        service.setWebhookLotericas(id, lotericas);
-        return { message: 'Configuração atualizada com sucesso' };
-    });
+    service.setWebhookLotericas(id, lotericas);
+    return { message: 'Configuração atualizada com sucesso' };
+  });
 
-    // Obter histórico de disparos de um webhook
-    server.get('/:id/history', {
-        schema: {
-            summary: '📜 Histórico de Disparos do Webhook',
-            description: `
+  // Obter histórico de disparos de um webhook
+  server.get('/:id/history', {
+    schema: {
+      summary: '📜 Histórico de Disparos do Webhook',
+      description: `
 Retorna o histórico de todos os disparos (tentativas de envio) de um webhook específico.
 
 Útil para monitorar se as notificações estão sendo entregues com sucesso.
@@ -370,49 +370,90 @@ curl -X GET "http://localhost:3002/v1/webhooks/550e8400-e29b-41d4-a716-446655440
 - \`success\` - Webhook entregue com sucesso (2xx)
 - \`error\` - Falha na entrega (4xx, 5xx ou exceção)
             `,
-            tags: ['🪝 Webhooks'],
-            params: z.object({
-                id: z.string().uuid().describe('ID do webhook (UUID)')
-            }),
-            querystring: z.object({
-                limit: z.string().optional().describe('Número máximo de registros a retornar (padrão: 50, máx: 500)')
-            }),
-            response: {
-                200: z.array(z.object({
-                    id: z.string().uuid().describe('ID único do log de disparo'),
-                    webhook_id: z.string().uuid().describe('ID do webhook'),
-                    event: z.string().describe('Tipo do evento (ex: novo_resultado)'),
-                    status: z.enum(['success', 'error']).describe('Status da entrega'),
-                    status_code: z.number().optional().describe('Código HTTP da resposta (quando sucesso)'),
-                    error_message: z.string().optional().describe('Mensagem de erro (quando falha)'),
-                    created_at: z.string().describe('Data/hora do disparo')
-                })).describe('Histórico de disparos ordenado por data (mais recente primeiro)'),
-                404: z.object({ 
-                    error: z.string() 
-                }).describe('Webhook não encontrado')
-            }
-        }
-    }, async (req, reply) => {
-        const { id } = req.params;
-        const limit = parseInt(req.query.limit || '50');
+      tags: ['🪝 Webhooks'],
+      params: z.object({
+        id: z.string().uuid().describe('ID do webhook (UUID)')
+      }),
+      querystring: z.object({
+        limit: z.string().optional().describe('Número máximo de registros a retornar (padrão: 50, máx: 500)')
+      }),
+      response: {
+        200: z.array(z.object({
+          id: z.string().uuid().describe('ID único do log de disparo'),
+          webhook_id: z.string().uuid().describe('ID do webhook'),
+          event: z.string().describe('Tipo do evento (ex: novo_resultado)'),
+          status: z.enum(['success', 'error']).describe('Status da entrega'),
+          status_code: z.number().optional().describe('Código HTTP da resposta (quando sucesso)'),
+          error_message: z.string().optional().describe('Mensagem de erro (quando falha)'),
+          created_at: z.string().describe('Data/hora do disparo')
+        })).describe('Histórico de disparos ordenado por data (mais recente primeiro)'),
+        404: z.object({
+          error: z.string()
+        }).describe('Webhook não encontrado')
+      }
+    }
+  }, async (req, reply) => {
+    const { id } = req.params;
+    const limit = parseInt(req.query.limit || '50');
 
-        const webhook = service.getById(id);
-        if (!webhook) {
-            return reply.status(404).send({ error: 'Webhook não encontrado' });
-        }
+    const webhook = service.getById(id);
+    if (!webhook) {
+      return reply.status(404).send({ error: 'Webhook não encontrado' });
+    }
 
-        const history = service.getWebhookHistory(id, limit);
-        return history.map(log => ({
-            ...log,
-            payload: undefined // Não retornar o payload completo para não poluir a resposta
-        }));
-    });
+    const history = service.getWebhookHistory(id, limit);
+    return history.map(log => ({
+      ...log,
+      payload: undefined // Não retornar o payload completo para não poluir a resposta
+    }));
+  });
 
-    // Obter histórico geral de todos os webhooks
-    server.get('/history/all', {
-        schema: {
-            summary: '📊 Histórico Geral de Webhooks',
-            description: `
+  // Testar um webhook
+  server.post('/:id/test', {
+    schema: {
+      summary: '🧪 Testar Webhook',
+      description: `
+Envia uma notificação de teste para o webhook especificado para verificar a conectividade.
+
+### Exemplo de Requisição:
+\`\`\`bash
+curl -X POST "http://localhost:3002/v1/webhooks/550e8400-e29b-41d4-a716-446655440000/test" \\
+  -H "x-api-key: SUA_API_KEY"
+\`\`\`
+            `,
+      tags: ['🪝 Webhooks'],
+      params: z.object({
+        id: z.string().uuid().describe('ID do webhook a ser testado')
+      }),
+      response: {
+        200: z.object({
+          status: z.string(),
+          http_code: z.number(),
+          response: z.any()
+        }).describe('Teste realizado com sucesso'),
+        400: z.any(),
+        404: z.object({ error: z.string() }),
+        500: z.any()
+      }
+    }
+  }, async (req, reply) => {
+    const { id } = req.params;
+    try {
+      const result = await service.testWebhook(id);
+      return result;
+    } catch (err: any) {
+      if (err.message === 'Webhook não encontrado') {
+        return reply.status(404).send({ error: err.message });
+      }
+      return reply.status(500).send(err);
+    }
+  });
+
+  // Obter histórico geral de todos os webhooks
+  server.get('/history/all', {
+    schema: {
+      summary: '📊 Histórico Geral de Webhooks',
+      description: `
 Retorna o histórico de disparos de **todos** os webhooks registrados no sistema.
 
 Útil para monitoramento geral e dashboards administrativos.
@@ -456,46 +497,46 @@ Use os parâmetros \`limit\` e \`offset\` para navegar pelos resultados:
 # Página 3: offset=200, limit=100
 \`\`\`
             `,
-            tags: ['🪝 Webhooks'],
-            querystring: z.object({
-                limit: z.string().optional().describe('Quantidade de registros (padrão: 100)'),
-                offset: z.string().optional().describe('Offset para paginação (padrão: 0)')
-            }),
-            response: {
-                200: z.array(z.object({
-                    id: z.string().uuid().describe('ID do log'),
-                    webhook_id: z.string().uuid().describe('ID do webhook'),
-                    webhook_url: z.string().describe('URL do webhook'),
-                    event: z.string().describe('Tipo do evento'),
-                    status: z.enum(['success', 'error']).describe('Status'),
-                    status_code: z.number().optional().describe('Código HTTP'),
-                    error_message: z.string().optional().describe('Erro, se houver'),
-                    created_at: z.string().describe('Data/hora')
-                })).describe('Histórico completo de todos os webhooks')
-            }
-        }
-    }, async (req) => {
-        const limit = parseInt(req.query.limit || '100');
-        const offset = parseInt(req.query.offset || '0');
+      tags: ['🪝 Webhooks'],
+      querystring: z.object({
+        limit: z.string().optional().describe('Quantidade de registros (padrão: 100)'),
+        offset: z.string().optional().describe('Offset para paginação (padrão: 0)')
+      }),
+      response: {
+        200: z.array(z.object({
+          id: z.string().uuid().describe('ID do log'),
+          webhook_id: z.string().uuid().describe('ID do webhook'),
+          webhook_url: z.string().describe('URL do webhook'),
+          event: z.string().describe('Tipo do evento'),
+          status: z.enum(['success', 'error']).describe('Status'),
+          status_code: z.number().optional().describe('Código HTTP'),
+          error_message: z.string().optional().describe('Erro, se houver'),
+          created_at: z.string().describe('Data/hora')
+        })).describe('Histórico completo de todos os webhooks')
+      }
+    }
+  }, async (req) => {
+    const limit = parseInt(req.query.limit || '100');
+    const offset = parseInt(req.query.offset || '0');
 
-        const history = service.getHistory(limit, offset);
-        return history.map(log => ({
-            id: log.id,
-            webhook_id: log.webhook_id,
-            webhook_url: (log as any).webhook_url,
-            event: log.event,
-            status: log.status,
-            status_code: log.status_code,
-            error_message: log.error_message,
-            created_at: log.created_at
-        }));
-    });
+    const history = service.getHistory(limit, offset);
+    return history.map(log => ({
+      id: log.id,
+      webhook_id: log.webhook_id,
+      webhook_url: (log as any).webhook_url,
+      event: log.event,
+      status: log.status,
+      status_code: log.status_code,
+      error_message: log.error_message,
+      created_at: log.created_at
+    }));
+  });
 
-    // Listar todas as lotéricas disponíveis
-    server.get('/lotericas/available', {
-        schema: {
-            summary: '🏪 Listar Lotéricas Disponíveis para Webhooks',
-            description: `
+  // Listar todas as lotéricas disponíveis
+  server.get('/lotericas/available', {
+    schema: {
+      summary: '🏪 Listar Lotéricas Disponíveis para Webhooks',
+      description: `
 Retorna todas as lotéricas disponíveis que podem ser configuradas em webhooks.
 
 Inclui informações sobre horários de sorteio quando disponível.
@@ -530,28 +571,28 @@ curl -X GET "http://localhost:3002/v1/webhooks/lotericas/available" \\
 ### Uso:
 Use este endpoint para construir interfaces de configuração de webhooks, permitindo que usuários selecionem quais lotéricas desejam monitorar.
             `,
-            tags: ['🪝 Webhooks'],
-            response: {
-                200: z.array(z.object({
-                    slug: z.string().describe('Slug único da lotérica'),
-                    nome: z.string().describe('Nome completo da lotérica'),
-                    horarios: z.array(z.string()).optional().describe('Horários de sorteio (HH:MM)')
-                })).describe('Lista de lotéricas disponíveis para configuração')
-            }
-        }
-    }, async () => {
-        return LOTERIAS.map(l => ({
-            slug: l.slug,
-            nome: l.nome,
-            horarios: l.horarios
-        }));
-    });
+      tags: ['🪝 Webhooks'],
+      response: {
+        200: z.array(z.object({
+          slug: z.string().describe('Slug único da lotérica'),
+          nome: z.string().describe('Nome completo da lotérica'),
+          horarios: z.array(z.string()).optional().describe('Horários de sorteio (HH:MM)')
+        })).describe('Lista de lotéricas disponíveis para configuração')
+      }
+    }
+  }, async () => {
+    return LOTERIAS.map(l => ({
+      slug: l.slug,
+      nome: l.nome,
+      horarios: l.horarios
+    }));
+  });
 
-    // Remover webhook
-    server.delete('/:id', {
-        schema: {
-            summary: '🗑️ Remover Webhook',
-            description: `
+  // Remover webhook
+  server.delete('/:id', {
+    schema: {
+      summary: '🗑️ Remover Webhook',
+      description: `
 Remove um webhook do sistema pelo seu ID.
 
 ⚠️ **Atenção:** Esta ação não pode ser desfeita. O webhook será permanentemente excluído e não receberá mais notificações.
@@ -572,20 +613,20 @@ Resposta vazia com status 204 indicando sucesso na exclusão.
 }
 \`\`\`
             `,
-            tags: ['🪝 Webhooks'],
-            params: z.object({
-                id: z.string().uuid().describe('ID do webhook a ser removido')
-            }),
-            response: {
-                204: z.null().describe('Webhook removido com sucesso (sem corpo na resposta)'),
-                404: z.object({ 
-                    error: z.string() 
-                }).describe('Webhook não encontrado')
-            }
-        }
-    }, async (req, reply) => {
-        const { id } = req.params;
-        service.delete(id);
-        return reply.status(204).send(null);
-    });
+      tags: ['🪝 Webhooks'],
+      params: z.object({
+        id: z.string().uuid().describe('ID do webhook a ser removido')
+      }),
+      response: {
+        204: z.null().describe('Webhook removido com sucesso (sem corpo na resposta)'),
+        404: z.object({
+          error: z.string()
+        }).describe('Webhook não encontrado')
+      }
+    }
+  }, async (req, reply) => {
+    const { id } = req.params;
+    service.delete(id);
+    return reply.status(204).send(null);
+  });
 }

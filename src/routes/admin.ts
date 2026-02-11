@@ -50,6 +50,17 @@ export async function adminRoutes(app: FastifyInstance) {
         }
     });
 
+    server.get('/proxies-page', async (req, reply) => {
+        try {
+            const html = fs.readFileSync(path.resolve('public/admin/proxies.html'), 'utf-8');
+            reply.header('Content-Type', 'text/html');
+            return reply.send(html);
+        } catch (error) {
+            logger.error('Admin', 'Erro ao carregar proxies.html:', error);
+            return reply.status(500).send({ error: 'Erro ao carregar página de proxies' });
+        }
+    });
+
     // API: Obter Template Atual
     server.get('/api/template', {
         schema: {

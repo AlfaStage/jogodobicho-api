@@ -33,7 +33,7 @@ export const LOTERIAS: LotericaConfig[] = [
         urlResultadoFacilDireto: 'https://www.resultadofacil.com.br/resultados-da-banca-pt-rio',
         urlLoteriaNacional: 'https://www.loterianacional.com.br/deu-no-poste/',
         urlBichoCerto: 'https://bichocerto.com/resultados/rj/para-todos',
-        horarios: ['09:20', '11:00', '14:20', '16:00', '18:20', '21:20']
+        horarios: ['09:20', '11:20', '14:20', '16:20', '18:20', '21:20']
     },
     // --- São Paulo (SP) ---
     {
@@ -43,7 +43,7 @@ export const LOTERIAS: LotericaConfig[] = [
         urlGigaBicho: 'https://www.gigabicho.com.br/jogo-do-bicho-sao-paulo/',
         urlResultadoFacil: 'https://www.resultadofacil.com.br/resultado-do-jogo-do-bicho/sp',
         urlResultadoFacilDireto: 'https://www.resultadofacil.com.br/resultados-da-banca-pt-sp',
-        horarios: ['08:00', '10:00', '12:20', '13:00', '15:20', '17:20', '19:00', '20:00']
+        horarios: ['08:20', '10:00', '12:00', '13:20', '15:20', '17:20', '19:00', '20:20']
     },
     {
         id: 'sp-bandeirantes',
@@ -122,7 +122,7 @@ export const LOTERIAS: LotericaConfig[] = [
         urlResultadoFacilDireto: 'https://www.resultadofacil.com.br/resultados-da-banca-paratodos-bahia',
         urlLoteriaNacional: 'https://www.loterianacional.com.br/paratodos-bahia/',
         urlBichoCerto: 'https://bichocerto.com/resultados/ba/para-todos',
-        horarios: ['10:00', '12:00', '15:00', '19:00', '21:00']
+        horarios: ['10:20', '12:00', '15:00', '19:00', '21:00']
     },
     {
         id: 'ba-maluca',
@@ -132,7 +132,7 @@ export const LOTERIAS: LotericaConfig[] = [
         urlResultadoFacil: 'https://www.resultadofacil.com.br/resultado-do-jogo-do-bicho/ba',
         urlResultadoFacilDireto: 'https://www.resultadofacil.com.br/resultados-da-banca-maluca-bahia',
         urlBichoCerto: 'https://bichocerto.com/resultados/mba/maluquinha-bahia',
-        horarios: ['10:00', '12:00', '15:00', '19:00', '21:00']
+        horarios: ['10:20', '12:00', '15:00', '19:00', '21:00']
     },
     // --- Paraíba (PB) ---
     {
@@ -144,7 +144,7 @@ export const LOTERIAS: LotericaConfig[] = [
         urlResultadoFacilDireto: 'https://www.resultadofacil.com.br/resultados-da-banca-lotep',
         urlLoteriaNacional: 'https://www.loterianacional.com.br/lotep/',
         urlBichoCerto: 'https://bichocerto.com/resultados/pb/pt-lotep',
-        horarios: ['10:45', '12:45', '15:45', '18:00']
+        horarios: ['11:00', '13:00', '15:00', '19:00']
     },
     {
         id: 'pb-campina',
@@ -222,7 +222,7 @@ export const LOTERIAS: LotericaConfig[] = [
         urlResultadoFacil: 'https://www.resultadofacil.com.br/resultado-do-jogo-do-bicho/df',
         urlResultadoFacilDireto: 'https://www.resultadofacil.com.br/resultados-da-banca-lbr',
         urlBichoCerto: 'https://bichocerto.com/resultados/lbr/brasilia',
-        horarios: ['08:40', '10:40', '12:40', '13:40', '15:40', '17:40', '20:40', '22:40']
+        horarios: ['08:40', '10:00', '12:40', '13:40', '15:40', '17:40', '20:40', '22:40']
     },
     // --- Rio Grande do Norte (RN) ---
     {
@@ -255,7 +255,7 @@ export const LOTERIAS: LotericaConfig[] = [
         urlResultadoFacilDireto: 'https://www.resultadofacil.com.br/resultados-da-banca-abaese---itabaiana-paratodos',
         urlLoteriaNacional: 'https://www.loterianacional.com.br/abaese/',
         urlBichoCerto: 'https://bichocerto.com/resultados/ab/abaese',
-        horarios: ['10:00', '13:00', '16:00', '19:00']
+        horarios: ['10:30', '12:30', '15:30', '19:00', '21:00']
     },
     // --- Nacional e Federal ---
     {
@@ -267,7 +267,7 @@ export const LOTERIAS: LotericaConfig[] = [
         urlResultadoFacilDireto: 'https://www.resultadofacil.com.br/resultado-banca-federal',
         urlLoteriaNacional: 'https://www.loterianacional.com.br/loteria-federal/',
         urlBichoCerto: 'https://bichocerto.com/resultados/fd/loteria-federal',
-        horarios: ['19:00']
+        horarios: ['20:15']
     },
     {
         id: 'br-nacional',
@@ -278,7 +278,7 @@ export const LOTERIAS: LotericaConfig[] = [
         urlResultadoFacilDireto: 'https://www.resultadofacil.com.br/resultados-da-banca-loteria-nacional',
         urlLoteriaNacional: 'https://www.loterianacional.com.br/resultado-nacional/',
         urlBichoCerto: 'https://bichocerto.com/resultados/ln/loteria-nacional',
-        horarios: ['02:00', '08:00', '10:00', '12:00', '15:00', '17:00', '19:00', '21:00', '22:00', '23:00']
+        horarios: ['02:00', '08:00', '10:00', '12:00', '15:00', '17:00', '20:00', '22:00', '23:00']
     },
     {
         id: 'br-tradicional',
@@ -286,7 +286,7 @@ export const LOTERIAS: LotericaConfig[] = [
         nome: 'Loteria Tradicional (LT)',
         urlResultadoFacil: 'https://www.resultadofacil.com.br/resultado-do-jogo-do-bicho/XX',
         urlResultadoFacilDireto: 'https://www.resultadofacil.com.br/resultados-da-banca-loteria-tradicional',
-        horarios: ['11:20', '12:20', '13:20', '14:20', '18:20', '19:20', '20:20', '21:20', '22:20', '23:20']
+        horarios: ['07:20', '09:20', '11:20', '14:20', '16:20', '18:20', '21:20', '23:20']
     }
 ];
 

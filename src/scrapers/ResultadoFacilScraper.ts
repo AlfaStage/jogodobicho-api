@@ -71,8 +71,14 @@ export class ResultadoFacilScraper extends ScraperBase {
         // Vamos procurar por tabelas e tentar identificar o horário pelo título próximo (h3, h4 ou texto)
 
         const tables = $('table');
+        if (tables.length === 0) {
+            this.lastErrorDetail = 'Nenhuma tabela de resultados encontrada na página';
+            return false;
+        }
+
         const dataHojeIso = new Date().toISOString().split('T')[0];
         let foundResults = false;
+        let horariosDetectadosCount = 0;
 
         tables.each((i, tableEl) => {
             const table = $(tableEl);
@@ -88,6 +94,7 @@ export class ResultadoFacilScraper extends ScraperBase {
             if (!horarioMatch) return;
 
             const horario = `${horarioMatch[1].padStart(2, '0')}:${horarioMatch[2]}`;
+            horariosDetectadosCount++;
 
             // Verificar se este horário é o que estamos procurando
             if (!horariosPendentes.includes(horario)) return;
@@ -124,6 +131,14 @@ export class ResultadoFacilScraper extends ScraperBase {
                 foundResults = true;
             }
         });
+
+        if (!foundResults) {
+            if (horariosDetectadosCount === 0) {
+                this.lastErrorDetail = 'Página carregada, mas não foram identificados blocos de horários/resultados.';
+            } else {
+                this.lastErrorDetail = 'Blocos de horários encontrados, mas os prêmios ainda não foram publicados.';
+            }
+        }
 
         return foundResults;
     }

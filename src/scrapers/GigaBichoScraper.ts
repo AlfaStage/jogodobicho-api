@@ -70,6 +70,14 @@ export class GigaBichoScraper extends ScraperBase {
         const rawHtml = $.html();
         const parts = rawHtml.split(/<h3[^>]*>/i);
 
+        if (parts.length <= 1) {
+            this.lastErrorDetail = 'Nenhum cabeçalho h3 encontrado na página (Site mudou a estrutura?)';
+            return;
+        }
+
+        let resultadosProcessados = 0;
+        let lotericasDetectadas = 0;
+
         for (let i = 1; i < parts.length; i++) {
             const part = parts[i];
             const partHeaderMatch = part.match(/^([\s\S]*?)<\/h3>/i);
@@ -84,6 +92,8 @@ export class GigaBichoScraper extends ScraperBase {
             if (!loteria) {
                 continue;
             }
+
+            lotericasDetectadas++;
 
             const horarioMatch = titulo.match(/(\d{1,2})[h:]?(\d{2})?\s*(horas)?/i);
             if (!horarioMatch) continue;
@@ -146,7 +156,14 @@ export class GigaBichoScraper extends ScraperBase {
 
             if (premios.length > 0) {
                 this.saveResult(loteria.slug, dataIso, horarioFormatado, premios, shouldNotify);
+                resultadosProcessados++;
             }
+        }
+
+        if (lotericasDetectadas === 0) {
+            this.lastErrorDetail = 'Página carregada, mas os títulos dos resultados não conferem com as lotéricas esperadas.';
+        } else if (resultadosProcessados === 0 && horariosPendentes.length > 0) {
+            this.lastErrorDetail = 'Estrutura detectada, mas os resultados para estes horários ainda não foram publicados.';
         }
     }
 

@@ -12,6 +12,7 @@ export abstract class ScraperBase {
     protected serviceName = 'ScraperBase';
     protected failureCount = 0;
     protected useBrowserFallback = false;
+    protected lastErrorDetail: string | null = null;
     private readonly MAX_FAILURES_BEFORE_BROWSER = 5;
 
     // 5 User-Agents para rotação
@@ -48,8 +49,14 @@ export abstract class ScraperBase {
         // Se já atingiu o limite de falhas, usar browser fallback
         if (this.useBrowserFallback) {
             logger.info(this.serviceName, `Usando browser fallback para ${url}`);
-            return await this.fetchWithBrowser(url);
+            const $ = await this.fetchWithBrowser(url);
+            if (!$) {
+                this.lastErrorDetail = 'Browser fallback falhou em carregar a página';
+            }
+            return $;
         }
+
+        this.lastErrorDetail = null;
 
         let attempt = 0;
         let useProxy = false; // Starts without proxy
@@ -94,15 +101,32 @@ export abstract class ScraperBase {
 
                 if (status && silentCodes.includes(status)) {
                     this.failureCount = 0;
+                    this.lastErrorDetail = `HTTP ${status}: Acesso negado ou página não encontrada (Bloqueio?)`;
                     return null;
+                }
+
+                if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+                    this.lastErrorDetail = 'Tempo de conexão esgotado (timeout)';
+                } else if (status) {
+                    this.lastErrorDetail = `Erro HTTP ${status}: ${error.message}`;
+                } else {
+                    this.lastErrorDetail = error.message || 'Erro de conexão desconhecido';
                 }
 
                 // After FIRST failure, enable proxy usage for subsequent retries
                 if (!useProxy && attempt >= 1) {
-                    const aliveProxies = proxyService.listAlive();
+                    let aliveProxies = proxyService.listAlive();
+
+                    // Se não houver nenhum proxy marcado como vivo, forçar um teste rápido antes de usar
+                    if (aliveProxies.length === 0) {
+                        logger.info(this.serviceName, 'Ativando proxies pela primeira vez. Testando disponibilidade...');
+                        await proxyService.testAllProxies();
+                        aliveProxies = proxyService.listAlive();
+                    }
+
                     if (aliveProxies.length > 0) {
                         useProxy = true;
-                        logger.info(this.serviceName, `Falha sem proxy. Ativando ${aliveProxies.length} proxies para retry...`);
+                        logger.info(this.serviceName, `Falha sem proxy. Usando ${aliveProxies.length} proxies para retry...`);
                     }
                 }
 
@@ -145,6 +169,11 @@ export abstract class ScraperBase {
     public resetFailureCount(): void {
         this.failureCount = 0;
         this.useBrowserFallback = false;
+        this.lastErrorDetail = null;
+    }
+
+    public getLastError(): string | null {
+        return this.lastErrorDetail;
     }
 
     abstract execute(targets?: LotericaConfig[], targetSlug?: string, shouldNotify?: boolean): Promise<void>;

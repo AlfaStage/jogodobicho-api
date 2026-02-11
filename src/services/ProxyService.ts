@@ -276,7 +276,7 @@ export class ProxyService {
         this.lastUsedIndex = (this.lastUsedIndex + 1) % proxies.length;
         const proxy = proxies[this.lastUsedIndex];
 
-        db.prepare('UPDATE proxies SET last_used_at = datetime("now") WHERE id = ?').run(proxy.id);
+        db.prepare('UPDATE proxies SET last_used_at = datetime(\'now\') WHERE id = ?').run(proxy.id);
         return proxy;
     }
 
@@ -369,7 +369,7 @@ export class ProxyService {
 
                 for (const { proxy, alive, latency } of results) {
                     db.prepare(
-                        'UPDATE proxies SET alive = ?, latency_ms = ?, last_tested_at = datetime("now"), score = ? WHERE id = ?'
+                        'UPDATE proxies SET alive = ?, latency_ms = ?, last_tested_at = datetime(\'now\'), score = ? WHERE id = ?'
                     ).run(
                         alive ? 1 : 0,
                         latency,
@@ -486,7 +486,7 @@ export class ProxyService {
     // SCHEDULER: Auto-collection + testing
     // ==========================================
 
-    /** Start auto-collection (hourly) and testing (every minute) */
+    /** Start auto-collection (hourly) */
     startScheduler(): void {
         // Collect every 30 minutes
         this.collectionInterval = setInterval(() => {
@@ -495,20 +495,14 @@ export class ProxyService {
             );
         }, 30 * 60 * 1000);
 
-        // Test every 60 seconds
-        this.testInterval = setInterval(() => {
-            this.testAllProxies().catch(err =>
-                logger.error(this.serviceName, 'Auto-test error:', err)
-            );
-        }, 60 * 1000);
+        // REMOVED manual testing per minute to save resources
+        // Testing will be triggered on-demand by scrapers when needed
 
-        logger.info(this.serviceName, '⏰ Scheduler iniciado: coleta a cada 30min, testes a cada 1min');
+        logger.info(this.serviceName, '⏰ Scheduler iniciado: coleta a cada 30min (testes sob demanda)');
 
-        // Initial collection and test after 5 seconds
+        // Initial collection after 5 seconds
         setTimeout(() => {
-            this.collectFromAllSources()
-                .then(() => this.testAllProxies())
-                .catch(err => logger.error(this.serviceName, 'Initial proxy setup error:', err));
+            this.collectFromAllSources().catch(err => logger.error(this.serviceName, 'Initial proxy setup error:', err));
         }, 5000);
     }
 

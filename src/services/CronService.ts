@@ -161,11 +161,12 @@ export class CronService {
                         scrapingStatusService.registerSuccess(target.loteria.slug, horario, dataHoje, 'scraper', result.id as any);
                     } else {
                         const proximaTentativa = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutos
+                        const motivoErro = this.scraperService.getDiagnosticSummary();
                         scrapingStatusService.registerError(
                             target.loteria.slug,
                             horario,
                             dataHoje,
-                            'Resultado não encontrado nas fontes disponíveis',
+                            motivoErro,
                             proximaTentativa
                         );
                     }

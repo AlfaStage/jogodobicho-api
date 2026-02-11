@@ -111,4 +111,20 @@ export class ScraperService {
 
         logger.success(this.serviceName, 'Ciclo finalizado');
     }
+
+    public getDiagnosticSummary(): string {
+        const diagnostics: string[] = [];
+
+        if (this.primary.getLastError()) diagnostics.push(`Fonte Principal: ${this.primary.getLastError()}`);
+        if (this.secondary.getLastError()) diagnostics.push(`Fonte Secundária: ${this.secondary.getLastError()}`);
+        if (this.tertiary.getLastError()) diagnostics.push(`Fonte Terciária: ${this.tertiary.getLastError()}`);
+        if (this.quaternary.getLastError()) diagnostics.push(`Fonte Quaternária: ${this.quaternary.getLastError()}`);
+        if (this.quinary.getLastError()) diagnostics.push(`Fonte Quinária: ${this.quinary.getLastError()}`);
+
+        if (diagnostics.length === 0) {
+            return 'Página carregada, mas os resultados ainda não foram publicados no site de origem.';
+        }
+
+        return diagnostics.join(' | ');
+    }
 }

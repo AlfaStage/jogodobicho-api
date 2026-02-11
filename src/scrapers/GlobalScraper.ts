@@ -87,13 +87,23 @@ export class GlobalScraper extends ScraperBase {
         logger.info(this.serviceName, `📄 URL ${url.split('/').pop()} tem ${lotericasComMesmaUrl.length} lotérica(s) vinculadas`);
 
         const tables = $('table');
+        if (tables.length === 0) {
+            this.lastErrorDetail = 'Nenhuma tabela de resultados encontrada na página (Site mudou a estrutura?)';
+            return;
+        }
+
+        let totalTabelasProcessadas = 0;
 
         for (let i = 0; i < tables.length; i++) {
             const table = $(tables[i]);
             const caption = table.find('caption').text().trim();
 
             const dataMatch = caption.match(/(\d{1,2}) de ([A-Za-zç]+) de (\d{4})/);
-            if (!dataMatch) continue;
+            if (!dataMatch) {
+                continue;
+            }
+
+            totalTabelasProcessadas++;
 
             const day = dataMatch[1].padStart(2, '0');
             const monthName = dataMatch[2].toLowerCase();
@@ -197,6 +207,12 @@ export class GlobalScraper extends ScraperBase {
                     })();
                 }
             }
+        }
+
+        if (totalTabelasProcessadas === 0) {
+            this.lastErrorDetail = 'Página carregada, mas nenhuma tabela de resultados válida foi encontrada.';
+        } else if (this.resultadosEncontrados === 0 && horariosPendentes.length > 0) {
+            this.lastErrorDetail = 'Tabelas encontradas, mas os resultados para os horários solicitados ainda não foram postados.';
         }
     }
 }

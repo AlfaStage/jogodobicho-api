@@ -73,7 +73,7 @@ export const LOTERIAS: LotericaConfig[] = [
         urlGigaBicho: 'https://www.gigabicho.com.br/boa-sorte/',
         urlLoteriaNacional: 'https://www.loterianacional.com.br/boa-sorte-loterias-goias/',
         urlBichoCerto: 'https://bichocerto.com/resultados/bs/boa-sorte',
-        horarios: ['11:20', '14:20', '16:20', '18:20']
+        horarios: ['09:45', '11:45', '14:45', '16:45', '18:30', '21:30']
     },
     // --- Minas Gerais (MG) ---
     {
@@ -255,7 +255,7 @@ export const LOTERIAS: LotericaConfig[] = [
         urlResultadoFacilDireto: 'https://www.resultadofacil.com.br/resultados-da-banca-abaese---itabaiana-paratodos',
         urlLoteriaNacional: 'https://www.loterianacional.com.br/abaese/',
         urlBichoCerto: 'https://bichocerto.com/resultados/ab/abaese',
-        horarios: ['10:00', '13:00', '14:00', '16:00', '19:00']
+        horarios: ['10:00', '13:00', '16:00', '19:00']
     },
     // --- Nacional e Federal ---
     {

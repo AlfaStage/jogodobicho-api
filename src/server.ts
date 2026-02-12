@@ -12,6 +12,7 @@ import { horoscopoRoutes } from './routes/horoscopo.js';
 import { comoJogarRoutes } from './routes/comojogar.js';
 import { numerologiaRoutes } from './routes/numerologia.js';
 import { webhooksRoutes } from './routes/webhooks.js';
+import { palpitesRoutes } from './routes/palpites.js';
 import { adminRoutes } from './routes/admin.js';
 import { statusRoutes } from './routes/status.js';
 import { proxiesRoutes } from './routes/proxies.js';
@@ -69,6 +70,7 @@ x-api-key: SUA_API_KEY
 ### 📚 Tags Organizadas
 - **📊 Resultados** - Consulta de resultados e premiações
 - **🦁 Bichos** - Tabela completa de bichos e grupos
+- **🦁 Palpites** - Palpites e bingos do dia
 - **🔮 Horóscopo** - Previsões diárias por signo
 - **🔢 Numerologia** - Cálculo de números da sorte
 - **🏪 Lotéricas** - Listagem de bancas disponíveis
@@ -144,6 +146,7 @@ curl -X POST "https://api.exemplo.com/v1/webhooks" \\
             { name: '📊 Resultados', description: 'Consulta de resultados do Jogo do Bicho em tempo real' },
             { name: '🖼️ Compartilhamento', description: 'Geração de imagens e HTML para compartilhamento' },
             { name: '🦁 Bichos', description: 'Tabela completa de bichos e suas dezenas' },
+            { name: '🦁 Palpites', description: 'Palpites e bingos do dia' },
             { name: '🔮 Horóscopo', description: 'Previsões diárias do horóscopo por signo' },
             { name: '🔢 Numerologia', description: 'Cálculo de números da sorte pelo nome' },
             { name: '🏪 Lotéricas', description: 'Listagem de bancas e lotéricas disponíveis' },
@@ -319,6 +322,7 @@ app.register(registerMcpRoutes);
 app.register(resultadosRoutes, { prefix: '/v1/resultados' });
 app.register(lotericasRoutes, { prefix: '/v1/lotericas' });
 app.register(bichosRoutes, { prefix: '/v1/bichos' });
+app.register(palpitesRoutes, { prefix: '/v1/palpites' });
 app.register(horoscopoRoutes, { prefix: '/v1/horoscopo' });
 app.register(numerologiaRoutes, { prefix: '/v1/numerologia' });
 app.register(webhooksRoutes, { prefix: '/v1/webhooks' });
@@ -401,6 +405,11 @@ const start = async () => {
             // Verificar horóscopo na inicialização (se for após 6h e não tiver dados)
             cronService.checkHoroscopoOnStartup().catch(err => {
                 logger.error('Server', 'Erro na verificação de horóscopo na inicialização:', err);
+            });
+
+            // Verificar palpites na inicialização (se for após 6h e não tiver dados)
+            cronService.checkPalpitesOnStartup().catch(err => {
+                logger.error('Server', 'Erro na verificação de palpites na inicialização:', err);
             });
         }
 

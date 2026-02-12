@@ -102,6 +102,56 @@ const schema = `
   CREATE INDEX IF NOT EXISTS idx_webhook_logs_webhook_id ON webhook_logs(webhook_id);
   CREATE INDEX IF NOT EXISTS idx_webhook_logs_created_at ON webhook_logs(created_at);
   CREATE INDEX IF NOT EXISTS idx_webhook_lotericas_webhook_id ON webhook_lotericas(webhook_id);
+
+  -- Tabelas para Palpites do Dia
+  CREATE TABLE IF NOT EXISTS palpites_dia (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS palpites_grupos (
+    id TEXT PRIMARY KEY,
+    palpite_id TEXT NOT NULL,
+    bicho TEXT NOT NULL,
+    grupo INTEGER NOT NULL,
+    dezenas TEXT NOT NULL,
+    FOREIGN KEY(palpite_id) REFERENCES palpites_dia(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS palpites_milhares (
+    id TEXT PRIMARY KEY,
+    palpite_id TEXT NOT NULL,
+    numero TEXT NOT NULL,
+    FOREIGN KEY(palpite_id) REFERENCES palpites_dia(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS palpites_centenas (
+    id TEXT PRIMARY KEY,
+    palpite_id TEXT NOT NULL,
+    numero TEXT NOT NULL,
+    FOREIGN KEY(palpite_id) REFERENCES palpites_dia(id) ON DELETE CASCADE
+  );
+
+  -- Tabelas para Bingos do Dia (Resultados Premiados)
+  CREATE TABLE IF NOT EXISTS bingos_dia (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS bingos_premios (
+    id TEXT PRIMARY KEY,
+    bingo_id TEXT NOT NULL,
+    tipo TEXT NOT NULL, -- 'milhar', 'centena', 'grupo'
+    numero TEXT NOT NULL,
+    extracao TEXT NOT NULL,
+    premio TEXT NOT NULL,
+    FOREIGN KEY(bingo_id) REFERENCES bingos_dia(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_palpites_data ON palpites_dia(data);
+  CREATE INDEX IF NOT EXISTS idx_bingos_data ON bingos_dia(data);
 `;
 
 logger.info('InitDB', 'Inicializando banco de dados...');

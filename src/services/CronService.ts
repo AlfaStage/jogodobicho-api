@@ -2,6 +2,7 @@ import { CronJob } from 'cron';
 import { ScraperService } from './ScraperService.js';
 import { HoroscopoScraper } from '../scrapers/HoroscopoScraper.js';
 import { ContentScraper } from '../scrapers/ContentScraper.js';
+import { PalpitesScraper } from '../scrapers/PalpitesScraper.js';
 import { LOTERIAS, LotericaConfig } from '../config/loterias.js';
 import { logger } from '../utils/logger.js';
 import { scrapingStatusService } from './ScrapingStatusService.js';
@@ -17,6 +18,7 @@ export class CronService {
     private scraperService = new ScraperService();
     private horoscopo = new HoroscopoScraper();
     private content = new ContentScraper();
+    private palpites = new PalpitesScraper();
     private jobs: CronJob[] = [];
     private isStarted = false;
     private serviceName = 'CronService';
@@ -44,12 +46,51 @@ export class CronService {
             new CronJob('0 6 * * *', () => this.runHoroscopo6h(), null, true, 'America/Sao_Paulo')
         );
 
-        // 3. Conteúdo (Semanal)
+
+        // 3. Palpites do Dia (07:00 DIARIO)
+        this.jobs.push(
+            new CronJob('0 7 * * *', () => this.palpites.execute([], 'palpites'), null, true, 'America/Sao_Paulo')
+        );
+
+        // 4. Bingos (Resultados Premiados) (23:30 DIARIO)
+        this.jobs.push(
+            new CronJob('30 23 * * *', () => this.palpites.execute([], 'bingos'), null, true, 'America/Sao_Paulo')
+        );
+
+        // 5. Conteúdo (Semanal)
         this.jobs.push(
             new CronJob('0 9 * * 1', () => this.runContent(), null, true, 'America/Sao_Paulo')
         );
 
         logger.success(this.serviceName, 'Smart Scheduler iniciado (Ciclo de 5 min)');
+    }
+
+    // Método público para verificar na inicialização se precisa buscar palpites (similar ao horóscopo)
+    async checkPalpitesOnStartup(): Promise<void> {
+        const today = new Date().toISOString().split('T')[0];
+
+        // Verificar se já tem palpites para hoje
+        const exists = db.prepare('SELECT id FROM palpites_dia WHERE data = ?').get(today);
+
+        if (exists) {
+            logger.info(this.serviceName, `Palpites de hoje (${today}) já existem. Pulando verificação inicial.`);
+            return;
+        }
+
+        // Se não tem, verifica horário (após 6h)
+        const nowBr = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+        const horaAtual = nowBr.getHours();
+
+        if (horaAtual < 6) {
+            logger.info(this.serviceName, `Palpites: São ${horaAtual}h, antes das 06h. Aguardando horário programado.`);
+            return;
+        }
+
+        logger.info(this.serviceName, `Palpites: São ${horaAtual}h e não há dados de hoje. Executando scraping imediato...`);
+        // Executa em "background" para não travar o startup, mas registramos erro se falhar
+        this.palpites.execute([], 'palpites').catch(err => {
+            logger.error(this.serviceName, 'Erro ao buscar palpites na inicialização:', err);
+        });
     }
 
     // Método público para verificar na inicialização se precisa buscar horóscopo

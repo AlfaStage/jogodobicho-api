@@ -190,15 +190,15 @@ export class PalpitesScraper extends ScraperBase {
                 insertPalpite.run(id, data);
 
                 for (const g of grupos) {
-                    insertGrupo.run(randomUUID(), id, g.bicho, g.grupo, g.dezenas);
+                    insertGrupo.run(randomUUID() as any, id, g.bicho, g.grupo, g.dezenas);
                 }
 
                 for (const m of milhares) {
-                    insertMilhar.run(randomUUID(), id, m);
+                    insertMilhar.run(randomUUID() as any, id, m);
                 }
 
                 for (const c of centenas) {
-                    insertCentena.run(randomUUID(), id, c);
+                    insertCentena.run(randomUUID() as any, id, c);
                 }
             });
 
@@ -209,7 +209,7 @@ export class PalpitesScraper extends ScraperBase {
             this.webhookService.notifyAll('novos_palpites', { data, grupos, milhares, centenas }).catch(() => { });
 
             // Sucesso dos Palpites
-            scrapingStatusService.registerSuccess('palpites', '07:00', data, 'scraper', id);
+            scrapingStatusService.registerSuccess('palpites', '07:00', data, 'scraper', id as any);
 
         } catch (error: any) {
             logger.error(this.serviceName, 'Erro ao salvar palpites:', error);
@@ -234,9 +234,9 @@ export class PalpitesScraper extends ScraperBase {
 
                 const insertPremio = db.prepare('INSERT INTO bingos_premios (id, bingo_id, tipo, numero, extracao, premio) VALUES (?, ?, ?, ?, ?, ?)');
 
-                for (const p of milhares) insertPremio.run(randomUUID() as string, bingoId as string, 'milhar', p.numero, p.extracao, p.premio);
-                for (const p of centenas) insertPremio.run(randomUUID() as string, bingoId as string, 'centena', p.numero, p.extracao, p.premio);
-                for (const p of grupos) insertPremio.run(randomUUID() as string, bingoId as string, 'grupo', p.numero, p.extracao, p.premio);
+                for (const p of milhares) insertPremio.run(randomUUID() as any, bingoId as any, 'milhar', p.numero, p.extracao, p.premio);
+                for (const p of centenas) insertPremio.run(randomUUID() as any, bingoId as any, 'centena', p.numero, p.extracao, p.premio);
+                for (const p of grupos) insertPremio.run(randomUUID() as any, bingoId as any, 'grupo', p.numero, p.extracao, p.premio);
             });
 
             transaction();

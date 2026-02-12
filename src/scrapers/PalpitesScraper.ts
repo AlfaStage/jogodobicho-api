@@ -243,7 +243,7 @@ export class PalpitesScraper extends ScraperBase {
             logger.success(this.serviceName, `Bingos salvos para ${data}: ${milhares.length} milhares, ${centenas.length} centenas, ${grupos.length} grupos.`);
 
             // Sucesso do Bingo
-            scrapingStatusService.registerSuccess('bingos', '23:30', data, 'scraper', bingoId);
+            scrapingStatusService.registerSuccess('bingos', '23:30', data, 'scraper', bingoId as any);
 
         } catch (error: any) {
             logger.error(this.serviceName, 'Erro ao salvar bingos:', error);

@@ -128,7 +128,7 @@ export class ScrapingStatusService {
     }
 
     // Registrar sucesso
-    registerSuccess(loteriaSlug: string, horario: string, data: string, fonte: string, resultadoId?: number): void {
+    registerSuccess(loteriaSlug: string, horario: string, data: string, fonte: string, resultadoId?: string | number): void {
         const now = new Date().toISOString();
 
         db.prepare(`

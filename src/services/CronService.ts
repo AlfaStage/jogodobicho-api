@@ -67,9 +67,13 @@ export class CronService {
 
     // Método público para verificar na inicialização se precisa buscar palpites (similar ao horóscopo)
     async checkPalpitesOnStartup(): Promise<void> {
-        const today = new Date().toISOString().split('T')[0];
+        // Agora o startup dos palpites é controlado pelo sucesso do horóscopo.
+        // Mas mantemos este método caso queiramos invocar separadamente ou para compatibilidade.
+        // Se o horóscopo já estiver completo, ele chamará o runPalpites.
+        // Se não estiver, quando completar chamará.
 
-        // Verificar se já tem palpites para hoje
+        // Verificação manual apenas se já temos horóscopo mas não palpites
+        const today = new Date().toISOString().split('T')[0];
         const exists = db.prepare('SELECT id FROM palpites_dia WHERE data = ?').get(today);
 
         if (exists) {
@@ -77,20 +81,10 @@ export class CronService {
             return;
         }
 
-        // Se não tem, verifica horário (após 6h)
-        const nowBr = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-        const horaAtual = nowBr.getHours();
-
-        if (horaAtual < 6) {
-            logger.info(this.serviceName, `Palpites: São ${horaAtual}h, antes das 06h. Aguardando horário programado.`);
-            return;
+        // Se horóscopo já estiver OK, roda palpites
+        if (this.horoscopoCompletoHoje) {
+            await this.runPalpites();
         }
-
-        logger.info(this.serviceName, `Palpites: São ${horaAtual}h e não há dados de hoje. Executando scraping imediato...`);
-        // Executa em "background" para não travar o startup, mas registramos erro se falhar
-        this.palpites.execute([], 'palpites').catch(err => {
-            logger.error(this.serviceName, 'Erro ao buscar palpites na inicialização:', err);
-        });
     }
 
     // Método público para verificar na inicialização se precisa buscar horóscopo
@@ -103,6 +97,8 @@ export class CronService {
         if (check && check.count >= 12) {
             logger.info(this.serviceName, `Horóscopo de hoje (${today}) já está completo. Pulando verificação de startup.`);
             this.horoscopoCompletoHoje = true;
+            // Tentar rodar palpites se horóscopo já está ok
+            await this.runPalpites();
             return;
         }
 
@@ -239,12 +235,14 @@ export class CronService {
                 this.horoscopoCompletoHoje = true;
                 logger.success(this.serviceName, `Horóscopo completo! (${check.count} registros)`);
 
-                // Se tinha job de retry, remove
                 if (this.horoscopoJobHora) {
                     this.horoscopoJobHora.stop();
                     this.horoscopoJobHora = undefined;
                     logger.info(this.serviceName, 'Job de retry do horóscopo removido (sucesso)');
                 }
+
+                // Chamar Palpites imediatamente após sucesso do Horóscopo
+                await this.runPalpites();
                 return;
             }
 
@@ -302,6 +300,19 @@ export class CronService {
             await this.content.execute();
         } catch (error: any) {
             logger.error(this.serviceName, 'Erro no conteúdo:', error.message);
+        }
+    }
+
+    private async runPalpites() {
+        // Verificar horário mínimo (06:00)
+        const nowBr = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+        if (nowBr.getHours() < 6) return;
+
+        logger.info(this.serviceName, 'Iniciando scraping de Palpites (pós-horóscopo)...');
+        try {
+            await this.palpites.execute([], 'palpites');
+        } catch (error: any) {
+            logger.error(this.serviceName, 'Erro ao buscar palpites:', error.message);
         }
     }
 

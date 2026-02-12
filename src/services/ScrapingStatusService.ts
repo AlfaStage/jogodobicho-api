@@ -413,7 +413,56 @@ export class ScrapingStatusService {
             });
         }
 
-        return resultado.sort((a, b) => a.loteria_nome.localeCompare(b.loteria_nome));
+        // Adicionar Palpites e Bingos manualmente à tabela
+        const palpitesStatus = statusMap.get('palpites:07:00');
+        const bingosStatus = statusMap.get('bingos:23:30');
+
+        if (palpitesStatus || bingosStatus) {
+            const extras: {
+                horario: string;
+                status: 'sucesso' | 'atraso' | 'erro' | 'pendente' | 'futuro';
+                tentativas: number;
+                erro?: string;
+                fonte?: string;
+                nome: string;
+            }[] = [];
+
+            if (palpitesStatus) {
+                extras.push({
+                    horario: '07:00',
+                    nome: 'Palpites do Dia',
+                    status: palpitesStatus.status === 'success' ? 'sucesso' : (palpitesStatus.status === 'error' ? 'erro' : 'pendente'),
+                    tentativas: palpitesStatus.tentativas,
+                    erro: palpitesStatus.ultimo_erro,
+                    fonte: palpitesStatus.fonte_usada
+                });
+            }
+
+            if (bingosStatus) {
+                extras.push({
+                    horario: '23:30',
+                    nome: 'Bingos do Dia',
+                    status: bingosStatus.status === 'success' ? 'sucesso' : (bingosStatus.status === 'error' ? 'erro' : 'pendente'),
+                    tentativas: bingosStatus.tentativas,
+                    erro: bingosStatus.ultimo_erro,
+                    fonte: bingosStatus.fonte_usada
+                });
+            }
+
+            // Adicionar como uma "Loteria" especial no início ou fim
+            resultado.unshift({
+                loteria_slug: 'palpites_bingos',
+                loteria_nome: '🦁 Palpites & Bingos',
+                horarios: extras
+            });
+        }
+
+        return resultado.sort((a, b) => {
+            // Manter Palpites no topo
+            if (a.loteria_slug === 'palpites_bingos') return -1;
+            if (b.loteria_slug === 'palpites_bingos') return 1;
+            return a.loteria_nome.localeCompare(b.loteria_nome);
+        });
     }
 
     private getTodayString(): string {

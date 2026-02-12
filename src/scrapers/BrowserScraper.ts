@@ -61,9 +61,10 @@ export class BrowserScraper {
                     '--no-zygote',
                     '--disable-gpu',
                     '--window-size=1920,1080'
-                ]
+                ],
+                executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
             });
-            logger.info(this.serviceName, 'Browser iniciado');
+            logger.info(this.serviceName, `Browser iniciado (Executable: ${process.env.PUPPETEER_EXECUTABLE_PATH || 'bundled'})`);
         }
     }
 

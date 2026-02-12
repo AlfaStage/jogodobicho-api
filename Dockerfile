@@ -18,7 +18,20 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Instalar bibliotecas de runtime necessárias
-RUN apk add --no-cache libstdc++ gcompat
+RUN apk add --no-cache \
+    libstdc++ \
+    gcompat \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
+
+# Configurar Puppeteer para usar o Chromium do sistema
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
 # Instalar dependências de produção apenas
 COPY package*.json ./
 RUN npm install --production

@@ -5,6 +5,7 @@ import { logger } from '../utils/logger.js';
 import { WebhookService } from '../services/WebhookService.js';
 import * as cheerio from 'cheerio';
 import { LotericaConfig } from '../config/loterias.js';
+import { scrapingStatusService } from '../services/ScrapingStatusService.js';
 
 interface PalpiteGrupo {
     bicho: string;
@@ -29,15 +30,22 @@ export class PalpitesScraper extends ScraperBase {
     // Adaptado para assinatura da base: targetSlug será usado como 'mode'
     async execute(targets?: LotericaConfig[], targetSlug?: string, shouldNotify: boolean = true): Promise<void> {
         const mode = (targetSlug === 'bingos') ? 'bingos' : 'palpites';
+        const horario = (mode === 'bingos') ? '23:30' : '07:00';
+        const dataHojeIso = new Date().toISOString().split('T')[0];
+
         logger.info(this.serviceName, `Iniciando varredura modo: ${mode}`);
+
+        // Registrar tentativa
+        scrapingStatusService.registerAttempt(mode, horario, dataHojeIso);
+        scrapingStatusService.registerPending(mode, (mode === 'bingos' ? 'Bingos do Dia' : 'Palpites do Dia'), horario, dataHojeIso);
 
         const $ = await this.fetchHtmlWithRetry();
         if (!$) {
-            logger.error(this.serviceName, 'Falha ao carregar página de palpites');
+            const errorMsg = 'Falha ao carregar página de palpites';
+            logger.error(this.serviceName, errorMsg);
+            scrapingStatusService.registerError(mode, horario, dataHojeIso, errorMsg);
             return;
         }
-
-        const dataHojeIso = new Date().toISOString().split('T')[0];
 
         if (mode === 'palpites') {
             await this.scrapePalpitesDoDia($, dataHojeIso);
@@ -200,8 +208,12 @@ export class PalpitesScraper extends ScraperBase {
             // Webhook notification could be added here
             this.webhookService.notifyAll('novos_palpites', { data, grupos, milhares, centenas }).catch(() => { });
 
+            // Sucesso dos Palpites
+            scrapingStatusService.registerSuccess('palpites', '07:00', data, 'scraper', id);
+
         } catch (error: any) {
             logger.error(this.serviceName, 'Erro ao salvar palpites:', error);
+            scrapingStatusService.registerError('palpites', '07:00', data, error.message);
         }
     }
 
@@ -222,16 +234,20 @@ export class PalpitesScraper extends ScraperBase {
 
                 const insertPremio = db.prepare('INSERT INTO bingos_premios (id, bingo_id, tipo, numero, extracao, premio) VALUES (?, ?, ?, ?, ?, ?)');
 
-                for (const p of milhares) insertPremio.run(randomUUID(), bingoId, 'milhar', p.numero, p.extracao, p.premio);
-                for (const p of centenas) insertPremio.run(randomUUID(), bingoId, 'centena', p.numero, p.extracao, p.premio);
-                for (const p of grupos) insertPremio.run(randomUUID(), bingoId, 'grupo', p.numero, p.extracao, p.premio);
+                for (const p of milhares) insertPremio.run(randomUUID() as string, bingoId as string, 'milhar', p.numero, p.extracao, p.premio);
+                for (const p of centenas) insertPremio.run(randomUUID() as string, bingoId as string, 'centena', p.numero, p.extracao, p.premio);
+                for (const p of grupos) insertPremio.run(randomUUID() as string, bingoId as string, 'grupo', p.numero, p.extracao, p.premio);
             });
 
             transaction();
             logger.success(this.serviceName, `Bingos salvos para ${data}: ${milhares.length} milhares, ${centenas.length} centenas, ${grupos.length} grupos.`);
 
+            // Sucesso do Bingo
+            scrapingStatusService.registerSuccess('bingos', '23:30', data, 'scraper', bingoId);
+
         } catch (error: any) {
             logger.error(this.serviceName, 'Erro ao salvar bingos:', error);
+            scrapingStatusService.registerError('bingos', '23:30', data, error.message);
         }
     }
 }

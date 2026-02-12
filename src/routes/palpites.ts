@@ -6,8 +6,8 @@ export async function palpitesRoutes(app: FastifyInstance) {
     app.get('/', {
         schema: {
             tags: ['🦁 Palpites'],
-            summary: 'Obter palpites e bingos do dia',
-            description: 'Retorna os palpites gerados para o dia (disponíveis após as 07h00) e os resultados premiados/bingos (disponíveis após as 23h30).',
+            summary: 'Obter palpites do dia',
+            description: 'Retorna os palpites gerados para o dia (disponíveis após as 07h00).',
             querystring: z.object({
                 data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Data no formato YYYY-MM-DD (padrão: hoje)')
             }),
@@ -23,24 +23,8 @@ export async function palpitesRoutes(app: FastifyInstance) {
                         milhares: z.array(z.string()).describe('Lista de milhares sugeridas'),
                         centenas: z.array(z.string()).describe('Lista de centenas sugeridas')
                     }).nullable().describe('Dados dos palpites do dia (null se ainda não coletado)'),
-                    bingos: z.object({
-                        milhares: z.array(z.object({
-                            numero: z.string(),
-                            extracao: z.string(),
-                            premio: z.string()
-                        })),
-                        centenas: z.array(z.object({
-                            numero: z.string(),
-                            extracao: z.string(),
-                            premio: z.string()
-                        })),
-                        grupos: z.array(z.object({
-                            numero: z.string(),
-                            extracao: z.string(),
-                            premio: z.string()
-                        }))
-                    }).nullable().describe('Resultados premiados/bingos do dia (null se ainda não coletado)')
-                }).describe('Objeto contendo os palpites e bingos do dia')
+
+                }).describe('Objeto contendo os palpites do dia')
             },
             examples: [
                 {
@@ -82,6 +66,50 @@ export async function palpitesRoutes(app: FastifyInstance) {
             };
         }
 
+
+
+        return {
+            data: queryDate,
+            palpites: palpitesData
+        };
+    });
+
+    // GET /bingos
+    app.get('/bingos', {
+        schema: {
+            tags: ['🦁 Bingos'],
+            summary: 'Obter bingos/resultados premiados',
+            description: 'Retorna os resultados premiados/bingos (disponíveis após as 23h30).',
+            querystring: z.object({
+                data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Data no formato YYYY-MM-DD (padrão: hoje)')
+            }),
+            response: {
+                200: z.object({
+                    data: z.string().describe('Data dos bingos (YYYY-MM-DD)'),
+                    bingos: z.object({
+                        milhares: z.array(z.object({
+                            numero: z.string(),
+                            extracao: z.string(),
+                            premio: z.string()
+                        })),
+                        centenas: z.array(z.object({
+                            numero: z.string(),
+                            extracao: z.string(),
+                            premio: z.string()
+                        })),
+                        grupos: z.array(z.object({
+                            numero: z.string(),
+                            extracao: z.string(),
+                            premio: z.string()
+                        }))
+                    }).nullable().describe('Resultados premiados/bingos do dia (null se ainda não coletado)')
+                })
+            }
+        }
+    }, async (request, reply) => {
+        const { data } = request.query as { data?: string };
+        const queryDate = data || new Date().toISOString().split('T')[0];
+
         // Buscar Bingos
         const bingo = db.prepare('SELECT id FROM bingos_dia WHERE data = ?').get(queryDate) as { id: string } | undefined;
         let bingosData = null;
@@ -98,7 +126,6 @@ export async function palpitesRoutes(app: FastifyInstance) {
 
         return {
             data: queryDate,
-            palpites: palpitesData,
             bingos: bingosData
         };
     });

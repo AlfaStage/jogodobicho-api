@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <title>Gestão de Webhooks</title>
     <link rel="stylesheet" href="../css/admin-theme.css">
+    <link rel="stylesheet" href="admin-common.css">
+    <script src="admin-common.js"></script>
     <style>
         /* Ajustes específicos para Webhooks */
         .webhook-list {
@@ -316,18 +318,6 @@
 </head>
 
 <body>
-    <header>
-        <div style="display: flex; align-items: center; gap: 20px;">
-            <h1>Jogo do Bicho</h1>
-            <nav class="nav">
-                <a href="/admin/status" id="linkStatus">Status</a>
-                <a href="/admin/webhooks" id="linkWebhooks" class="active">Webhooks</a>
-                <a href="/admin/template" id="linkTemplate">Template</a>
-                <a href="/api-docs" id="linkDocs">API Docs</a>
-            </nav>
-        </div>
-    </header>
-
     <div class="container" style="max-width: 900px; margin-top: 40px;">
         <div class="card" style="padding: 30px;">
             <h2 style="margin-top: 0">Registrar Novo Webhook</h2>

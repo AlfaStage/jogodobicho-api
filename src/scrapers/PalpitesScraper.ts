@@ -62,61 +62,78 @@ export class PalpitesScraper extends ScraperBase {
             return;
         }
 
-        // 1. Grupos/Bichos do dia
+        // 1. Acumuladores para os dados
         const grupos: PalpiteGrupo[] = [];
-        // Seletores baseados na estrutura analisada:
-        // h4 com texto "🏆[Bicho] - Grupo [XX]" seguido por p com "Dezenas: ..."
+        const milhares: string[] = [];
+        const centenas: string[] = [];
 
         $('h4').each((i: number, el: any) => {
-            const text = $(el).text().trim(); // Ex: "🏆Elefante - Grupo 12"
-            if (!text.includes('Grupo')) return;
+            const h4 = $(el);
+            const text = h4.text().trim();
 
-            const match = text.match(/[🏆]?\s*([A-Za-zçãéêíóôõú]+)\s*-\s*Grupo\s*(\d+)/i);
-            if (match) {
-                const bicho = match[1].trim();
-                const grupo = parseInt(match[2]);
+            // 1. Grupos/Bichos do dia
+            // Ex: "🏆Elefante - Grupo 12" ou "Jacaré - Grupo 15"
+            if (text.toLowerCase().includes('grupo')) {
+                const match = text.match(/([A-ZÀ-ÿa-zÀ-ÿ]+)\s*-\s*Grupo\s*(\d+)/i);
+                if (match) {
+                    const bicho = match[1].trim();
+                    const grupo = parseInt(match[2]);
 
-                // O parágrafo seguinte contém as dezenas
-                const dezenasTxt = $(el).next('p').text().trim(); // Ex: "Dezenas: 45, 46, 47, 48"
-                const dezenasMatch = dezenasTxt.match(/Dezenas:\s*([\d,\s]+)/i);
+                    // Procurar as dezenas nos próximos elementos
+                    let dezenas: string | null = null;
+                    let nextEl = h4.next();
 
-                if (dezenasMatch) {
-                    grupos.push({
-                        bicho,
-                        grupo,
-                        dezenas: dezenasMatch[1].trim()
-                    });
+                    // Olhar os próximos 3 elementos até achar "Dezenas:"
+                    for (let j = 0; j < 3; j++) {
+                        if (nextEl.length === 0) break;
+                        const nextText = nextEl.text().trim();
+                        const dezenasMatch = nextText.match(/Dezenas:\s*([\d,\s]+)/i);
+                        if (dezenasMatch) {
+                            dezenas = dezenasMatch[1].trim();
+                            break;
+                        }
+                        nextEl = nextEl.next();
+                    }
+
+                    if (dezenas) {
+                        grupos.push({ bicho, grupo, dezenas });
+                    }
+                }
+            }
+
+            // 2. Milhar do dia
+            if (text.toUpperCase().includes('MILHAR') && text.toUpperCase().includes('DIA')) {
+                let nextEl = h4.next();
+                for (let j = 0; j < 3; j++) {
+                    if (nextEl.length === 0 || nextEl.prop('tagName')?.startsWith('H')) break;
+                    const nextText = nextEl.text().trim();
+                    const matches = nextText.match(/\b\d{4}\b/g);
+                    if (matches && matches.length > 3) { // Se achar vários números de 4 dígitos
+                        milhares.push(...matches);
+                        break;
+                    }
+                    nextEl = nextEl.next();
+                }
+            }
+
+            // 3. Centena do dia
+            if (text.toUpperCase().includes('CENTENA') && text.toUpperCase().includes('DIA')) {
+                let nextEl = h4.next();
+                for (let j = 0; j < 3; j++) {
+                    if (nextEl.length === 0 || nextEl.prop('tagName')?.startsWith('H')) break;
+                    const nextText = nextEl.text().trim();
+                    const matches = nextText.match(/\b\d{3}\b/g);
+                    if (matches && matches.length > 5) { // Centenas geralmente vem em lista maior
+                        centenas.push(...matches);
+                        break;
+                    }
+                    nextEl = nextEl.next();
                 }
             }
         });
 
-        // 2. Milhar do dia
-        const milhares: string[] = [];
-        // Procurar Heading "MILHAR do dia" e pegar o parágrafo seguinte com números
-        const milharHeader = $('h4:contains("MILHAR do dia")');
-        if (milharHeader.length) {
-            const milesTxt = milharHeader.nextAll('p').eq(1).text().trim(); // Geralmente é o segundo p, o primeiro diz "Nosso palpite..."
-            // Texto ex: "1458 - 1484 - 1548 ..."
-            // Extrair sequências de 4 dígitos
-            const matches = milesTxt.match(/\b\d{4}\b/g);
-            if (matches) {
-                milhares.push(...matches);
-            }
-        }
-
-        // 3. Centena do dia
-        const centenas: string[] = [];
-        const centenaHeader = $('h4:contains("CENTENA do dia")');
-        if (centenaHeader.length) {
-            const centTxt = centenaHeader.nextAll('p').eq(1).text().trim();
-            const matches = centTxt.match(/\b\d{3}\b/g);
-            if (matches) {
-                centenas.push(...matches);
-            }
-        }
-
         if (grupos.length === 0 && milhares.length === 0) {
-            logger.warn(this.serviceName, 'Nenhum palpite encontrado. Estrutura pode ter mudado.');
+            logger.warn(this.serviceName, 'Nenhum palpite encontrado com os novos seletores. Verifique manualmente o HTML.');
             return;
         }
 

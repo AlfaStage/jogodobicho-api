@@ -536,28 +536,11 @@ http://user:pass@proxy3.example.com:3128
     </main>
 
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const apiKey = urlParams.get('key') || '';
-
-        // Update nav links
-        if (apiKey) {
-            document.querySelectorAll('.nav a').forEach(a => {
-                if (!a.href.includes('/docs')) {
-                    const url = new URL(a.href);
-                    url.searchParams.set('key', apiKey);
-                    a.href = url.toString();
-                }
-            });
-        }
-
-        async function apiFetch(path, opts = {}) {
-            const sep = path.includes('?') ? '&' : '?';
-            const url = apiKey ? `${path}${sep}key=${apiKey}` : path;
-            return fetch(url, {
-                ...opts,
-                headers: { 'Content-Type': 'application/json', ...opts.headers }
-            }).then(r => r.json());
-        }
+        // Usar as funções globais do admin-common.js
+        const apiFetch = async (url, opts = {}) => {
+            const res = await window.fetchAdmin(url, opts);
+            return res.json();
+        };
 
         function showProgress(show) {
             document.getElementById('progressBar').classList.toggle('active', show);

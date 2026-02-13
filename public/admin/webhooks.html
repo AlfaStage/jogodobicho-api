@@ -388,24 +388,8 @@
         let allLotericas = [];
         let selectedLotericas = [];
 
-        // Persistência da API Key na URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const apiKey = urlParams.get('key');
-
-        if (apiKey) {
-            // Atualizar links da nav
-            document.getElementById('linkWebhooks').href = `/admin/webhooks?key=${apiKey}`;
-            document.getElementById('linkTemplate').href = `/admin/template?key=${apiKey}`;
-        }
-
-        // Wrapper para fetch que inclui a key na query string
-        async function fetchWithKey(url, options = {}) {
-            if (apiKey) {
-                const separator = url.includes('?') ? '&' : '?';
-                url = `${url}${separator}key=${apiKey}`;
-            }
-            return fetch(url, options);
-        }
+        // Usar as funções globais do admin-common.js
+        const fetchWithKey = window.fetchAdmin;
 
         async function loadWebhooks() {
             try {

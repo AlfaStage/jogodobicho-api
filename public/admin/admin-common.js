@@ -3,17 +3,22 @@
     const urlParams = new URLSearchParams(window.location.search);
     let apiKey = urlParams.get('key');
 
-    // Se não estiver na URL, busca no localStorage
     if (!apiKey) {
         apiKey = localStorage.getItem('admin_api_key');
     } else {
-        // Se estiver na URL, salva no localStorage para persistência
         localStorage.setItem('admin_api_key', apiKey);
     }
+
+    // Exportar para uso nas páginas
+    window.adminApiKey = apiKey;
 
     // 2. Injeção do Sidebar
     function injectSidebar() {
         if (document.getElementById('admin-sidebar')) return;
+        if (!document.body) {
+            setTimeout(injectSidebar, 50);
+            return;
+        }
 
         const sidebar = document.createElement('div');
         sidebar.id = 'admin-sidebar';
@@ -30,7 +35,7 @@
 
         let navHtml = '';
         menuItems.forEach(item => {
-            const isActive = currentPath.includes(item.path) || (item.path === '/admin/proxies-page' && currentPath.includes('proxies'));
+            const isActive = currentPath.includes(item.path);
             const url = apiKey ? `${item.path}?key=${apiKey}` : item.path;
             navHtml += `<a href="${url}" class="${isActive ? 'active' : ''}"><i>${item.icon}</i> ${item.name}</a>`;
         });
@@ -48,27 +53,35 @@
         `;
 
         document.body.prepend(sidebar);
+
+        // Ajustar margem do body se houver main/container/editor-container
+        const main = document.querySelector('main') || document.querySelector('.container') || document.querySelector('.editor-container');
+        if (main) {
+            main.style.marginLeft = '260px'; // sidebar width
+        }
     }
 
     // 3. Utilitários Globais
     window.getAdminKey = () => apiKey;
 
     window.fetchAdmin = async (url, options = {}) => {
-        if (apiKey) {
+        const key = window.adminApiKey;
+        if (key) {
             const separator = url.includes('?') ? '&' : '?';
-            url = `${url}${separator}key=${apiKey}`;
+            url = `${url}${separator}key=${key}`;
         }
         return fetch(url, options);
     };
 
-    // 4. Correção automática de links (Interceptar todos os cliques em links locais)
+    // 4. Correção automática de links
     document.addEventListener('click', (e) => {
         const link = e.target.closest('a');
         if (link && link.href && link.href.startsWith(window.location.origin)) {
             const url = new URL(link.href);
-            if (apiKey && !url.searchParams.has('key') && !url.pathname.includes('/api-docs')) {
+            const key = window.adminApiKey;
+            if (key && !url.searchParams.has('key') && !url.pathname.includes('/api-docs') && url.pathname.startsWith('/admin')) {
                 e.preventDefault();
-                url.searchParams.set('key', apiKey);
+                url.searchParams.set('key', key);
                 window.location.href = url.toString();
             }
         }
@@ -81,6 +94,6 @@
         injectSidebar();
     }
 
-    // Exportar para uso nas páginas
-    window.apiKey = apiKey;
+    // Fallback
+    setTimeout(injectSidebar, 500);
 })();

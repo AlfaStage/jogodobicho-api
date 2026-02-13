@@ -11,84 +11,7 @@
     <link rel="stylesheet" href="admin-common.css">
     <script src="admin-common.js"></script>
     <style>
-        :root {
-            --bg-dark: #0a0a0a;
-            --bg-card: #111111;
-            --bg-card-hover: #1a1a1a;
-            --border-color: #222222;
-            --text-primary: #ffffff;
-            --text-secondary: #888888;
-            --accent-green: #22c55e;
-            --accent-red: #ef4444;
-            --accent-yellow: #eab308;
-            --accent-blue: #3b82f6;
-            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: var(--font-sans);
-            background-color: var(--bg-dark);
-            color: var(--text-primary);
-            min-height: 100vh;
-        }
-
-        /* Header consistente com admin */
-        header {
-            background: linear-gradient(135deg, #111111 0%, #1a1a1a 100%);
-            border-bottom: 1px solid var(--border-color);
-            padding: 0 24px;
-            height: 64px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin: 0;
-            background: linear-gradient(135deg, #22c55e, #4ade80);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        nav {
-            display: flex;
-            gap: 8px;
-        }
-
-        nav a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-        }
-
-        nav a:hover,
-        nav a.active {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-primary);
-        }
-
-        /* Main content */
-        main {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 32px 24px;
-        }
-
+        /* Manter apenas estilos específicos da página de status */
         .page-header {
             display: flex;
             justify-content: space-between;
@@ -109,35 +32,7 @@
         .header-actions {
             display: flex;
             gap: 12px;
-        }
-
-        button {
-            background: linear-gradient(135deg, #22c55e, #16a34a);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
             align-items: center;
-            gap: 8px;
-        }
-
-        button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
-        }
-
-        button.secondary {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-        }
-
-        button.secondary:hover {
-            background: var(--bg-card-hover);
-            box-shadow: none;
         }
 
         /* Stats cards */
@@ -182,14 +77,6 @@
             color: var(--text-secondary);
             font-size: 0.75rem;
             margin-top: 4px;
-        }
-
-        .stat-sublabel.success {
-            color: var(--accent-green);
-        }
-
-        .stat-sublabel.error {
-            color: var(--accent-red);
         }
 
         /* Section title */
@@ -304,6 +191,7 @@
         .horario-badge.erro {
             background: rgba(239, 68, 68, 0.2);
             color: var(--accent-red);
+            cursor: pointer;
         }
 
         .horario-badge.pendente {
@@ -322,13 +210,7 @@
             font-size: 0.75rem;
         }
 
-        .loteria-summary span {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        /* Detalhes de erros */
+        /* Erros container */
         .erros-container {
             background: rgba(239, 68, 68, 0.08);
             border-top: 1px solid rgba(239, 68, 68, 0.2);
@@ -359,204 +241,13 @@
             min-width: 70px;
         }
 
-        .erro-tentativas {
-            color: var(--text-secondary);
-            font-size: 0.7rem;
-        }
-
         .erro-msg {
             color: var(--accent-red);
             flex: 1;
             word-break: break-word;
         }
 
-        .horario-badge.erro {
-            cursor: pointer;
-        }
-
-        .horario-badge.erro:hover {
-            background: rgba(239, 68, 68, 0.35);
-            transform: scale(1.05);
-        }
-
-        /* Loterias grid */
-        .loterias-grid {
-            display: grid;
-            gap: 16px;
-        }
-
-        .loteria-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        .loteria-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px 20px;
-            background: rgba(255, 255, 255, 0.02);
-            border-bottom: 1px solid var(--border-color);
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .loteria-header:hover {
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .loteria-info h3 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .loteria-info span {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-        }
-
-        .loteria-stats {
-            display: flex;
-            gap: 16px;
-            align-items: center;
-        }
-
-        .mini-stat {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.9rem;
-        }
-
-        .mini-stat .dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-        }
-
-        .mini-stat .dot.success {
-            background: var(--accent-green);
-        }
-
-        .mini-stat .dot.error {
-            background: var(--accent-red);
-        }
-
-        .mini-stat .dot.pending {
-            background: var(--accent-yellow);
-        }
-
-        .chevron {
-            color: var(--text-secondary);
-            transition: transform 0.2s;
-        }
-
-        .loteria-card.expanded .chevron {
-            transform: rotate(180deg);
-        }
-
-        .horarios-table {
-            display: none;
-            padding: 16px 20px;
-        }
-
-        .loteria-card.expanded .horarios-table {
-            display: block;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th,
-        td {
-            text-align: left;
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        th {
-            color: var(--text-secondary);
-            font-weight: 500;
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        tr:last-child td {
-            border-bottom: none;
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-
-        .status-badge.success {
-            background: rgba(34, 197, 94, 0.15);
-            color: var(--accent-green);
-        }
-
-        .status-badge.error {
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--accent-red);
-        }
-
-        .status-badge.pending {
-            background: rgba(234, 179, 8, 0.15);
-            color: var(--accent-yellow);
-        }
-
-        .status-badge.retrying {
-            background: rgba(59, 130, 246, 0.15);
-            color: var(--accent-blue);
-        }
-
-        .error-details {
-            margin-top: 8px;
-            padding: 12px;
-            background: rgba(239, 68, 68, 0.1);
-            border-radius: 8px;
-            font-size: 0.85rem;
-            color: var(--accent-red);
-        }
-
-        .error-details code {
-            display: block;
-            margin-top: 8px;
-            padding: 8px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 0.8rem;
-            word-break: break-all;
-        }
-
-        .retry-info {
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            margin-top: 4px;
-        }
-
-        .resultado-link {
-            color: var(--accent-blue);
-            text-decoration: none;
-        }
-
-        .resultado-link:hover {
-            text-decoration: underline;
-        }
-
-        /* Loading state */
+        /* Loading */
         .loading {
             display: flex;
             flex-direction: column;
@@ -582,7 +273,6 @@
             }
         }
 
-        /* Auto-refresh indicator */
         .auto-refresh {
             display: flex;
             align-items: center;
@@ -611,53 +301,9 @@
             }
         }
 
-        /* Empty state */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text-secondary);
-        }
-
-        .empty-state svg {
-            width: 64px;
-            height: 64px;
-            margin-bottom: 16px;
-            opacity: 0.5;
-        }
-
-        /* Responsive */
         @media (max-width: 768px) {
-            header {
-                flex-direction: column;
-                height: auto;
-                padding: 16px;
-                gap: 16px;
-            }
-
-            nav {
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-
-            .page-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 16px;
-            }
-
             .stats-grid {
                 grid-template-columns: repeat(2, 1fr);
-            }
-
-            .loteria-stats {
-                flex-wrap: wrap;
-                gap: 8px;
-            }
-
-            th,
-            td {
-                padding: 8px;
-                font-size: 0.85rem;
             }
         }
     </style>
@@ -734,23 +380,8 @@
     </main>
 
     <script>
-        // Persistência da API Key na URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const apiKey = urlParams.get('key');
-
-        if (apiKey) {
-            document.getElementById('linkTemplate').href = `/admin/template?key=${apiKey}`;
-            document.getElementById('linkWebhooks').href = `/admin/webhooks?key=${apiKey}`;
-            document.getElementById('linkStatus').href = `/admin/status?key=${apiKey}`;
-        }
-
-        async function fetchWithKey(url, options = {}) {
-            if (apiKey) {
-                const separator = url.includes('?') ? '&' : '?';
-                url = `${url}${separator}key=${apiKey}`;
-            }
-            return fetch(url, options);
-        }
+        // Usar as funções globais do admin-common.js
+        const fetchWithKey = window.fetchAdmin;
 
         // Atualizar data
         function updateDataAtual() {
@@ -1004,7 +635,8 @@
 
             let detalhes = '-';
             if (h.status === 'success' && h.resultado_id) {
-                detalhes = `<a href="/live?key=${apiKey || ''}" class="resultado-link">Ver resultado #${h.resultado_id}</a>`;
+                const key = window.adminApiKey;
+                detalhes = `<a href="/live?key=${key || ''}" class="resultado-link">Ver resultado #${h.resultado_id}</a>`;
             } else if (h.status === 'error' && h.ultimo_erro) {
                 detalhes = `
                     <div class="error-details">

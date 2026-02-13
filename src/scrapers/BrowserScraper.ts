@@ -24,6 +24,14 @@ export const SITE_NAVIGATIONS: Record<string, SiteNavigationConfig> = {
             { selector: 'body', action: 'wait', delay: 3000 },
         ]
     },
+    'resultadofacil.com.br/palpites-do-dia': {
+        homeUrl: 'https://www.resultadofacil.com.br',
+        steps: [
+            { selector: 'body', action: 'wait', delay: 3000 },
+            { selector: 'a[href*="palpites-do-dia"]', action: 'click', delay: 3000 },
+            { selector: 'body', action: 'scroll', delay: 1500 },
+        ]
+    },
     'gigabicho.com.br': {
         homeUrl: 'https://www.gigabicho.com.br',
         steps: [
@@ -82,11 +90,19 @@ export class BrowserScraper {
     ): Promise<cheerio.CheerioAPI | null> {
         await this.init();
 
-        const hostname = new URL(targetUrl).hostname.replace('www.', '');
-        const config = customConfig || SITE_NAVIGATIONS[hostname];
+        const urlObj = new URL(targetUrl);
+        const fullKey = urlObj.hostname.replace('www.', '') + urlObj.pathname;
+        const hostKey = urlObj.hostname.replace('www.', '');
+
+        // Tentar encontrar o match mais específico primeiro (path) e depois o hostname
+        const configKey = Object.keys(SITE_NAVIGATIONS)
+            .sort((a, b) => b.length - a.length) // Chaves mais longas primeiro
+            .find(k => fullKey.includes(k) || hostKey === k);
+
+        const config = customConfig || (configKey ? SITE_NAVIGATIONS[configKey] : null);
 
         if (!config) {
-            logger.warn(this.serviceName, `Nenhuma configuração de navegação encontrada para ${hostname}`);
+            logger.warn(this.serviceName, `Nenhuma configuração de navegação encontrada para ${fullKey}`);
             return null;
         }
 

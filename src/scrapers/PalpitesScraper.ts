@@ -41,7 +41,7 @@ export class PalpitesScraper extends ScraperBase {
 
         const $ = await this.fetchHtmlWithRetry();
         if (!$) {
-            const errorMsg = 'Falha ao carregar página de palpites';
+            const errorMsg = this.getLastError() || 'Falha ao carregar página de palpites';
             logger.error(this.serviceName, errorMsg);
             scrapingStatusService.registerError(mode, horario, dataHojeIso, errorMsg);
             return;

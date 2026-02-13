@@ -100,8 +100,16 @@ export abstract class ScraperBase {
                 if (proxy) proxyService.recordError(proxy.id, `${status || 'timeout'}: ${error.message?.substring(0, 100)}`);
 
                 if (status && silentCodes.includes(status)) {
-                    this.failureCount = 0;
                     this.lastErrorDetail = `HTTP ${status}: Acesso negado ou página não encontrada (Bloqueio?)`;
+
+                    // Se for 403 e ainda não estivermos usando browser fallback, tentar ativar
+                    if (status === 403 && !this.useBrowserFallback) {
+                        logger.warn(this.serviceName, `Bloqueio 403 detectado em ${url}. Ativando browser fallback...`);
+                        this.useBrowserFallback = true;
+                        return await this.fetchWithBrowser(url);
+                    }
+
+                    this.failureCount = 0;
                     return null;
                 }
 

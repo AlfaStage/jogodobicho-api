@@ -16,6 +16,7 @@ import { palpitesRoutes } from './routes/palpites.js';
 import { adminRoutes } from './routes/admin.js';
 import { statusRoutes } from './routes/status.js';
 import { proxiesRoutes } from './routes/proxies.js';
+import { cotacaoRoutes } from './routes/cotacao.js';
 import { proxyService } from './services/ProxyService.js';
 import { registerMcpRoutes } from './mcp/fastify-mcp.js';
 import { CronService } from './services/CronService.js';
@@ -153,6 +154,7 @@ curl -X POST "https://api.exemplo.com/v1/webhooks" \\
             { name: '🏪 Lotéricas', description: 'Listagem de bancas e lotéricas disponíveis' },
             { name: '🪝 Webhooks', description: 'Sistema de webhooks para notificações em tempo real' },
             { name: 'ℹ️ Info', description: 'Informações sobre como jogar e regras' },
+            { name: '🦁 Cotas', description: 'Cotações (odds) atualizadas para apostas' },
             { name: '⚙️ Admin', description: 'Endpoints administrativos' },
             { name: '💓 Health', description: 'Verificação de saúde da API' }
         ],
@@ -330,6 +332,7 @@ app.register(webhooksRoutes, { prefix: '/v1/webhooks' });
 app.register(comoJogarRoutes, { prefix: '/v1/como-jogar' });
 app.register(adminRoutes, { prefix: '/admin' });
 app.register(statusRoutes, { prefix: '/api/status' });
+app.register(cotacaoRoutes, { prefix: '/v1/cotacao' });
 app.register(proxiesRoutes, { prefix: '/admin/proxies' });
 
 app.get('/health', {
@@ -411,6 +414,11 @@ const start = async () => {
             // Verificar palpites na inicialização (se for após 6h e não tiver dados)
             cronService.checkPalpitesOnStartup().catch(err => {
                 logger.error('Server', 'Erro na verificação de palpites na inicialização:', err);
+            });
+
+            // Verificar cotações na inicialização (se ainda não tiver executado hoje)
+            cronService.checkCotacoesOnStartup().catch(err => {
+                logger.error('Server', 'Erro na verificação de cotações na inicialização:', err);
             });
         }
 

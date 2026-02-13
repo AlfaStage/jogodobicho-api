@@ -150,8 +150,17 @@ const schema = `
     FOREIGN KEY(bingo_id) REFERENCES bingos_dia(id) ON DELETE CASCADE
   );
 
+  -- Tabela para Cotações
+  CREATE TABLE IF NOT EXISTS cotacoes (
+    id TEXT PRIMARY KEY,
+    modalidade TEXT NOT NULL UNIQUE,
+    valor TEXT NOT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE INDEX IF NOT EXISTS idx_palpites_data ON palpites_dia(data);
   CREATE INDEX IF NOT EXISTS idx_bingos_data ON bingos_dia(data);
+  CREATE INDEX IF NOT EXISTS idx_cotacoes_modalidade ON cotacoes(modalidade);
 `;
 
 logger.info('InitDB', 'Inicializando banco de dados...');

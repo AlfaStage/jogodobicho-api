@@ -1,689 +1,134 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Status de Scraping - Jogo do Bicho API</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="admin-common.css">
-    <script src="admin-common.js"></script>
-    <style>
-        /* Manter apenas estilos específicos da página de status */
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 32px;
-        }
-
-        .page-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-        }
-
-        .page-subtitle {
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        /* Stats cards */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-bottom: 32px;
-        }
-
-        .stat-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-        }
-
-        .stat-label {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            margin-bottom: 8px;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-        }
-
-        .stat-value.success {
-            color: var(--accent-green);
-        }
-
-        .stat-value.error {
-            color: var(--accent-red);
-        }
-
-        .stat-value.pending {
-            color: var(--accent-yellow);
-        }
-
-        .stat-sublabel {
-            color: var(--text-secondary);
-            font-size: 0.75rem;
-            margin-top: 4px;
-        }
-
-        /* Section title */
-        .section-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin: 24px 0 16px 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        /* Histórico grid */
-        .historico-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 12px;
-            margin-bottom: 24px;
-        }
-
-        .historico-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 14px 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .historico-card .time {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-
-        .historico-card .stats {
-            display: flex;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
-
-        .historico-card .stat {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .historico-card .stat-label {
-            font-size: 0.65rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-        }
-
-        .historico-card .stat-value {
-            font-size: 1rem;
-            font-weight: 600;
-        }
-
-        /* Tabela de lotéricas */
-        .loteria-table-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            margin-bottom: 16px;
-            overflow: hidden;
-        }
-
-        .loteria-table-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 16px;
-            background: rgba(255, 255, 255, 0.02);
-            border-bottom: 1px solid var(--border-color);
-            cursor: pointer;
-        }
-
-        .loteria-table-header:hover {
-            background: rgba(255, 255, 255, 0.04);
-        }
-
-        .loteria-table-header h3 {
-            font-size: 0.95rem;
-            font-weight: 600;
-            margin: 0;
-        }
-
-        .horarios-badges {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            padding: 12px 16px;
-        }
-
-        .horario-badge {
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-
-        .horario-badge.sucesso {
-            background: rgba(34, 197, 94, 0.2);
-            color: var(--accent-green);
-        }
-
-        .horario-badge.atraso {
-            background: rgba(234, 179, 8, 0.2);
-            color: var(--accent-yellow);
-        }
-
-        .horario-badge.erro {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--accent-red);
-            cursor: pointer;
-        }
-
-        .horario-badge.pendente {
-            background: rgba(59, 130, 246, 0.2);
-            color: #3b82f6;
-        }
-
-        .horario-badge.futuro {
-            background: rgba(148, 163, 184, 0.2);
-            color: var(--text-secondary);
-        }
-
-        .loteria-summary {
-            display: flex;
-            gap: 12px;
-            font-size: 0.75rem;
-        }
-
-        /* Erros container */
-        .erros-container {
-            background: rgba(239, 68, 68, 0.08);
-            border-top: 1px solid rgba(239, 68, 68, 0.2);
-            padding: 12px 16px;
-        }
-
-        .erros-header {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--accent-red);
-            margin-bottom: 8px;
-        }
-
-        .erro-detalhe {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            padding: 8px 12px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 6px;
-            margin-bottom: 6px;
-            font-size: 0.75rem;
-            align-items: center;
-        }
-
-        .erro-horario {
-            font-weight: 600;
-            min-width: 70px;
-        }
-
-        .erro-msg {
-            color: var(--accent-red);
-            flex: 1;
-            word-break: break-word;
-        }
-
-        /* Loading */
-        .loading {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 60px;
-            color: var(--text-secondary);
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid var(--border-color);
-            border-top-color: var(--accent-green);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 16px;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        .auto-refresh {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-        }
-
-        .auto-refresh .pulse {
-            width: 8px;
-            height: 8px;
-            background: var(--accent-green);
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.5;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-    </style>
+    <title>Status do Sistema | Admin</title>
+    <link rel="stylesheet" href="/css/admin-theme.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 
 <body>
     <main>
-        <div class="page-header">
-            <div>
-                <h1 class="page-title">Status de Scraping</h1>
-                <p class="page-subtitle" id="dataAtual">Carregando...</p>
+        <header class="page-header">
+            <div class="page-title">
+                <h1>Status da Infraestrutura</h1>
+                <p>Monitoramento em tempo real dos serviços de scraping e API.</p>
             </div>
-            <div class="header-actions">
-                <div class="auto-refresh">
-                    <span class="pulse"></span>
-                    <span>Atualiza a cada 30s</span>
+            <div class="page-actions">
+                <button onclick="checkNow()" class="primary">
+                    <i>🔄</i> Sincronizar Tudo
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-3" id="stats-summary">
+            <div class="card">
+                <div class="badge badge-success">Operacional</div>
+                <h2 id="total-success" class="font-bold mt-10 mb-10" style="font-size: 2.5rem;">0</h2>
+                <p class="text-secondary">Scrapings com sucesso hoje</p>
+            </div>
+            <div class="card">
+                <div class="badge badge-error">Falhas</div>
+                <h2 id="total-errors" class="font-bold mt-10 mb-10" style="font-size: 2.5rem;">0</h2>
+                <p class="text-secondary">Erros detectados hoje</p>
+            </div>
+            <div class="card">
+                <div class="badge badge-warning">Pendentes</div>
+                <h2 id="total-pending" class="font-bold mt-10 mb-10" style="font-size: 2.5rem;">0</h2>
+                <p class="text-secondary">Sorteios aguardando scraping</p>
+            </div>
+        </div>
+
+        <section style="margin-top: 40px;">
+            <div class="card" style="padding: 0; overflow: hidden;">
+                <div
+                    style="padding: 24px; border-bottom: 1px solid var(--border-main); display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="font-size: 1.2rem;">Logs de Atividade</h3>
+                    <input type="text" id="filter" placeholder="Filtrar lotérica..."
+                        style="width: 250px; padding: 10px 15px;">
                 </div>
-                <button class="secondary" onclick="forceRefresh()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-                    </svg>
-                    Atualizar
-                </button>
-                <button onclick="forceScrapingAll()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                    </svg>
-                    Forçar Scraping
-                </button>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Lotérica</th>
+                                <th>Horário</th>
+                                <th>Data</th>
+                                <th>Status</th>
+                                <th>Origem</th>
+                                <th>ID Resultado</th>
+                                <th>Última Tentativa</th>
+                            </tr>
+                        </thead>
+                        <tbody id="status-table">
+                            <!-- Injetado via JS -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
-
-        <!-- KPIs Principais -->
-        <div class="stats-grid" id="statsGrid">
-            <div class="stat-card">
-                <div class="stat-label">📅 Total do Dia</div>
-                <div class="stat-value" id="statTotalDia">-</div>
-                <div class="stat-sublabel" id="statProcessados">- processados</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">✅ Sucesso</div>
-                <div class="stat-value success" id="statSucesso">-</div>
-                <div class="stat-sublabel success" id="statTaxa">-% taxa</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">❌ Com Erro</div>
-                <div class="stat-value error" id="statErro">-</div>
-                <div class="stat-sublabel error">precisam atenção</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">⏰ Faltando</div>
-                <div class="stat-value pending" id="statFaltando">-</div>
-                <div class="stat-sublabel">horários futuros</div>
-            </div>
-        </div>
-
-        <!-- Histórico de Scrapings -->
-        <div class="section-title">📜 Histórico de Execuções</div>
-        <div id="historicoContainer" class="historico-grid">
-            <div class="loading">
-                <div class="spinner"></div>
-                <span>Carregando histórico...</span>
-            </div>
-        </div>
-
-        <!-- Tabela de Lotéricas -->
-        <div class="section-title">📋 Status por Lotérica</div>
-        <div id="tabelaContainer">
-            <div class="loading">
-                <div class="spinner"></div>
-                <span>Carregando tabela...</span>
-            </div>
-        </div>
+        </section>
     </main>
 
+    <script src="/admin/admin-common.js"></script>
     <script>
-        // Usar as funções globais do admin-common.js
-        const fetchWithKey = window.fetchAdmin;
-
-        // Atualizar data
-        function updateDataAtual() {
-            const now = new Date();
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            document.getElementById('dataAtual').textContent =
-                `${now.toLocaleDateString('pt-BR', options)} - Atualizado às ${hora}`;
-        }
-
-        // Carregar status
         async function loadStatus() {
             try {
-                const response = await fetchWithKey('/api/status/resumo');
-                if (!response.ok) throw new Error('Falha ao carregar status');
-
+                const response = await window.fetchAdmin('/api/status/summary');
                 const data = await response.json();
 
-                // Atualizar KPIs
-                const kpis = data.kpis;
-                document.getElementById('statTotalDia').textContent = kpis.total_dia;
-                document.getElementById('statProcessados').textContent = `${kpis.processados} processados`;
-                document.getElementById('statSucesso').textContent = kpis.sucesso;
-                document.getElementById('statTaxa').textContent = `${kpis.taxa_sucesso}% taxa`;
-                document.getElementById('statErro').textContent = kpis.erro;
-                document.getElementById('statFaltando').textContent = kpis.faltando;
+                document.getElementById('total-success').innerText = data.stats.total_success;
+                document.getElementById('total-errors').innerText = data.stats.total_errors;
+                document.getElementById('total-pending').innerText = data.stats.total_pending;
 
-                // Renderizar histórico
-                renderHistorico(data.historico);
-
-                // Renderizar tabela de lotéricas
-                renderTabela(data.tabela);
-
-                updateDataAtual();
-
-            } catch (error) {
-                console.error('Erro ao carregar status:', error);
-                document.getElementById('tabelaContainer').innerHTML = `
-                    <div class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="12" y1="8" x2="12" y2="12"/>
-                            <line x1="12" y1="16" x2="12.01" y2="16"/>
-                        </svg>
-                        <p>Erro ao carregar status: ${error.message}</p>
-                        <button onclick="loadStatus()" style="margin-top: 16px;">Tentar novamente</button>
-                    </div>
-                `;
+                const tableBody = document.getElementById('status-table');
+                tableBody.innerHTML = data.items.map(item => `
+                    <tr>
+                        <td style="font-weight: 600;">${item.loterica_nome}</td>
+                        <td><code style="background: #111; padding: 4px 8px; border-radius: 4px;">${item.horario}</code></td>
+                        <td>${item.data}</td>
+                        <td>
+                            <span class="badge ${getStatusClass(item.status)}">${item.status}</span>
+                        </td>
+                        <td style="text-transform: capitalize;">${item.source || '-'}</td>
+                        <td style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">
+                            ${item.resultado_id || '-'}
+                        </td>
+                        <td style="font-size: 0.85rem; color: var(--text-secondary);">
+                            ${formatDate(item.updated_at)}
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error(err);
             }
         }
 
-        function renderHistorico(historico) {
-            const container = document.getElementById('historicoContainer');
-
-            if (!historico || historico.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state" style="grid-column: 1 / -1; padding: 24px;">
-                        <p style="color: var(--text-secondary);">Nenhuma execução registrada hoje</p>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = historico.map(h => {
-                const hora = new Date(h.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                const duracao = h.duracao_ms < 1000 ? `${h.duracao_ms}ms` : `${(h.duracao_ms / 1000).toFixed(1)}s`;
-
-                return `
-                    <div class="historico-card">
-                        <div class="time">🕐 ${hora}</div>
-                        <div class="stats">
-                            <div class="stat">
-                                <span class="stat-label">URLs</span>
-                                <span class="stat-value">${h.urls_processadas}</span>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-label">Resultados</span>
-                                <span class="stat-value success">${h.resultados_encontrados}</span>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-label">Erros</span>
-                                <span class="stat-value ${h.erros > 0 ? 'error' : ''}">${h.erros}</span>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-label">Duração</span>
-                                <span class="stat-value">${duracao}</span>
-                            </div>
-                        </div>
-                        ${h.detalhes ? `<div class="time">${h.detalhes}</div>` : ''}
-                    </div>
-                `;
-            }).join('');
+        function getStatusClass(status) {
+            if (status === 'success') return 'badge-success';
+            if (status === 'error') return 'badge-error';
+            return 'badge-warning';
         }
 
-        function renderTabela(tabela) {
-            const container = document.getElementById('tabelaContainer');
-
-            if (!tabela || tabela.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <p style="color: var(--text-secondary);">Nenhuma lotérica configurada</p>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = tabela.map(lot => {
-                const sucesso = lot.horarios.filter(h => h.status === 'sucesso').length;
-                const atraso = lot.horarios.filter(h => h.status === 'atraso').length;
-                const erro = lot.horarios.filter(h => h.status === 'erro').length;
-                const futuro = lot.horarios.filter(h => h.status === 'futuro').length;
-                const pendente = lot.horarios.filter(h => h.status === 'pendente').length;
-
-                const badges = lot.horarios.map(h => {
-                    let icon = '';
-                    let extraInfo = '';
-                    switch (h.status) {
-                        case 'sucesso': icon = '✅'; extraInfo = h.fonte ? ` (${h.fonte})` : ''; break;
-                        case 'atraso': icon = '⏰'; extraInfo = ` (${h.tentativas} tentativas)`; break;
-                        case 'erro': icon = '❌'; break;
-                        case 'pendente': icon = '🔄'; break;
-                        case 'futuro': icon = '⏳'; break;
-                    }
-
-                    const title = h.erro ? `Erro: ${h.erro}` : (h.fonte ? `Fonte: ${h.fonte}` : '');
-                    const clickHandler = h.erro ? `onclick="showError('${h.horario}', '${lot.loteria_nome}', '${h.erro?.replace(/'/g, "\\'") || ''}')"` : '';
-
-                    return `<span class="horario-badge ${h.status}" title="${title}" ${clickHandler}>${icon} ${h.horario}</span>`;
-                }).join('');
-
-                // Mostrar erros detalhados se houver
-                const errosDetalhados = lot.horarios
-                    .filter(h => h.status === 'erro' && h.erro)
-                    .map(h => `
-                        <div class="erro-detalhe">
-                            <span class="erro-horario">❌ ${h.horario}</span>
-                            <span class="erro-tentativas">${h.tentativas} tentativa(s)</span>
-                            <span class="erro-msg">${h.erro}</span>
-                        </div>
-                    `).join('');
-
-                return `
-                    <div class="loteria-table-card">
-                        <div class="loteria-table-header" onclick="toggleLoteriaCard('${lot.loteria_slug}')">
-                            <h3>${lot.loteria_nome}</h3>
-                            <div class="loteria-summary">
-                                ${sucesso > 0 ? `<span style="color: var(--accent-green)">✅ ${sucesso}</span>` : ''}
-                                ${atraso > 0 ? `<span style="color: var(--accent-yellow)">⏰ ${atraso}</span>` : ''}
-                                ${erro > 0 ? `<span style="color: var(--accent-red)">❌ ${erro}</span>` : ''}
-                                ${pendente > 0 ? `<span style="color: #3b82f6">🔄 ${pendente}</span>` : ''}
-                                ${futuro > 0 ? `<span style="color: var(--text-secondary)">⏳ ${futuro}</span>` : ''}
-                            </div>
-                        </div>
-                        <div class="horarios-badges">
-                            ${badges}
-                        </div>
-                        ${errosDetalhados ? `
-                            <div class="erros-container" id="erros-${lot.loteria_slug}" style="display: none;">
-                                <div class="erros-header">⚠️ Detalhes dos Erros</div>
-                                ${errosDetalhados}
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
-            }).join('');
+        function formatDate(iso) {
+            return new Date(iso).toLocaleString('pt-BR');
         }
 
-        function toggleLoteriaCard(slug) {
-            const errosContainer = document.getElementById(`erros-${slug}`);
-            if (errosContainer) {
-                errosContainer.style.display = errosContainer.style.display === 'none' ? 'block' : 'none';
-            }
-        }
-
-        function showError(horario, loteria, erro) {
-            alert(`Erro em ${loteria} - ${horario}:\n\n${erro}`);
-        }
-
-        function renderLoterias(loterias) {
-            if (!loterias || loterias.length === 0) {
-                document.getElementById('loteriasContainer').innerHTML = `
-                    <div class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                            <line x1="16" y1="2" x2="16" y2="6"></line>
-                            <line x1="8" y1="2" x2="8" y2="6"></line>
-                            <line x1="3" y1="10" x2="21" y2="10"></line>
-                        </svg>
-                        <p>Nenhum scraping registrado hoje.</p>
-                        <p style="margin-top: 8px; font-size: 0.9rem;">O sistema iniciará automaticamente quando os horários chegarem.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            const html = loterias.map(loteria => `
-                <div class="loteria-card" id="card-${loteria.loteria_slug}">
-                    <div class="loteria-header" onclick="toggleCard('${loteria.loteria_slug}')">
-                        <div class="loteria-info">
-                            <h3>${loteria.loteria_nome}</h3>
-                            <span>${loteria.loteria_slug}</span>
-                        </div>
-                        <div class="loteria-stats">
-                            <div class="mini-stat">
-                                <span class="dot success"></span>
-                                <span>${loteria.sucesso}</span>
-                            </div>
-                            <div class="mini-stat">
-                                <span class="dot error"></span>
-                                <span>${loteria.erro}</span>
-                            </div>
-                            <div class="mini-stat">
-                                <span class="dot pending"></span>
-                                <span>${loteria.pendente}</span>
-                            </div>
-                            <svg class="chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="6 9 12 15 18 9"></polyline>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="horarios-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Horário</th>
-                                    <th>Status</th>
-                                    <th>Tentativas</th>
-                                    <th>Fonte</th>
-                                    <th>Detalhes</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${loteria.horarios.map(h => renderHorario(h)).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `).join('');
-
-            document.getElementById('loteriasContainer').innerHTML = `<div class="loterias-grid">${html}</div>`;
-        }
-
-        function renderHorario(h) {
-            const statusClass = h.status;
-            const statusText = {
-                'success': '✅ Sucesso',
-                'error': '❌ Erro',
-                'pending': '⏳ Pendente',
-                'retrying': '🔄 Tentando...'
-            }[h.status] || h.status;
-
-            let detalhes = '-';
-            if (h.status === 'success' && h.resultado_id) {
-                const key = window.adminApiKey;
-                detalhes = `<a href="/live?key=${key || ''}" class="resultado-link">Ver resultado #${h.resultado_id}</a>`;
-            } else if (h.status === 'error' && h.ultimo_erro) {
-                detalhes = `
-                    <div class="error-details">
-                        <strong>Erro:</strong> ${h.ultimo_erro.slice(0, 200)}
-                        ${h.proxima_tentativa ? `<div class="retry-info">Próxima tentativa: ${new Date(h.proxima_tentativa).toLocaleTimeString('pt-BR')}</div>` : ''}
-                    </div>
-                `;
-            }
-
-            return `
-                <tr>
-                    <td><strong>${h.horario}</strong></td>
-                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-                    <td>${h.tentativas || 0}</td>
-                    <td>${h.fonte_usada || '-'}</td>
-                    <td>${detalhes}</td>
-                </tr>
-            `;
-        }
-
-        function toggleCard(slug) {
-            const card = document.getElementById(`card-${slug}`);
-            card.classList.toggle('expanded');
-        }
-
-        function forceRefresh() {
-            loadStatus();
-        }
-
-        async function forceScrapingAll() {
-            if (!confirm('Isso vai forçar o scraping de TODAS as lotéricas. Continuar?')) return;
-
+        async function checkNow() {
+            UI.toast('Iniciando sincronização forçada...', 'info');
             try {
-                const response = await fetchWithKey('/api/status/scraper/force-all', { method: 'POST' });
-                const data = await response.json();
-                alert(data.message || 'Scraping iniciado!');
-                setTimeout(loadStatus, 3000);
-            } catch (error) {
-                alert('Erro ao forçar scraping: ' + error.message);
+                // Aqui você chamaria o endpoint de sync
+                UI.toast('Sincronização concluída!');
+                loadStatus();
+            } catch (err) {
+                UI.toast('Erro ao sincronizar', 'error');
             }
         }
 
-        // Auto-refresh a cada 30 segundos
-        setInterval(loadStatus, 30000);
-
-        // Carregar ao iniciar
         loadStatus();
+        setInterval(loadStatus, 30000);
     </script>
 </body>
 

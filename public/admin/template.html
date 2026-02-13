@@ -1,312 +1,179 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 
 <head>
     <meta charset="UTF-8">
-    <title>Designer de Template</title>
-    <link rel="stylesheet" href="../css/admin-theme.css">
-    <link rel="stylesheet" href="admin-common.css">
-    <script src="admin-common.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Designer | Admin</title>
+    <link rel="stylesheet" href="/css/admin-theme.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* Ajustes específicos para o Editor */
-        .editor-container {
+        .editor-layout {
             display: flex;
-            flex: 1;
-            gap: 20px;
-            padding: 20px;
-            height: calc(100vh - 80px);
-            /* Ajuste para caber com header */
-            box-sizing: border-box;
+            gap: 24px;
+            height: calc(100vh - 180px);
+            min-height: 600px;
         }
 
-        .pane {
-            flex: 1;
+        .editor-pane {
+            flex: 1.2;
             display: flex;
             flex-direction: column;
+        }
+
+        .preview-pane {
+            flex: 0.8;
+            display: flex;
+            flex-direction: column;
+            background: #080808;
+            border-radius: 16px;
+            border: 1px solid var(--border-main);
+            padding: 24px;
+            overflow-y: auto;
         }
 
         textarea {
             flex: 1;
-            background: #111;
-            color: #d4d4d4;
-            border: none;
+            background: #050505;
+            color: #a5d6a7;
+            border: 1px solid var(--border-main);
+            border-radius: 12px;
             padding: 20px;
-            font-family: var(--font-mono);
-            font-size: 14px;
-            resize: none;
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
             line-height: 1.6;
+            resize: none;
+            outline: none;
         }
 
-        .preview-content {
-            flex: 1;
-            padding: 40px 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            overflow-y: auto;
-            background: #0a0a0a;
-            /* Fundo levemente mais escuro para contraste */
+        textarea:focus {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 0 3px rgba(0, 230, 118, 0.1);
         }
 
-        /* Container do iframe com scale para manter visual 350px */
-        .iframe-container {
+        .preview-box {
             width: 350px;
             height: 600px;
+            background: #fff;
+            border-radius: 8px;
             overflow: hidden;
+            transform: scale(0.9);
+            transform-origin: top center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
         }
 
         iframe {
-            border: none;
             width: 700px;
             height: 1200px;
-            background: transparent;
+            border: none;
             transform: scale(0.5);
             transform-origin: top left;
         }
 
-        img {
-            margin-top: 30px;
-            width: 350px;
-            height: auto;
-            border: none;
-            transition: all 0.3s ease;
-        }
-
-        .status-badge {
-            margin-right: 15px;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
+        .label-badge {
+            background: #111;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
         }
     </style>
 </head>
 
 <body>
-    <div class="editor-container" style="display: flex; flex-direction: column;">
-        <div
-            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid var(--border-color);">
-            <h2 style="margin: 0;">🎨 Designer de Template</h2>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span id="status" class="status-badge"></span>
-                <button class="secondary" onclick="updatePreview()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M23 4v6h-6" />
-                        <path d="M1 20v-6h6" />
-                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-                    </svg>
-                    Preview
-                </button>
-                <button onclick="saveTemplate()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                        <polyline points="17 21 17 13 7 13 7 21" />
-                        <polyline points="7 3 7 8 15 8" />
-                    </svg>
-                    Salvar
-                </button>
+    <main>
+        <header class="page-header">
+            <div class="page-title">
+                <h1>Designer de Imagens</h1>
+                <p>Customize o template HTML/CSS para geração automática de resultados.</p>
+            </div>
+            <div class="page-actions">
+                <span id="status" class="text-secondary mr-10" style="font-size: 0.85rem;"></span>
+                <button class="secondary" onclick="updatePreview()"><i>🔄</i> Preview</button>
+                <button class="primary" onclick="saveTemplate()"><i>💾</i> Salvar Template</button>
+            </div>
+        </header>
+
+        <div class="editor-layout">
+            <div class="editor-pane">
+                <div class="flex justify-between items-center mb-10 px-10">
+                    <span class="label-badge">Editor HTML (Satori Compatible)</span>
+                    <span class="text-muted" style="font-size: 0.75rem;">Variáveis: {{DATA}}, {{PREMIOS}},
+                        {{LOTERICA}}</span>
+                </div>
+                <textarea id="codeEditor" spellcheck="false" placeholder="<!-- Digite seu HTML aqui -->"></textarea>
+            </div>
+
+            <div class="preview-pane">
+                <div class="text-center mb-20">
+                    <span class="label-badge">Visualização em Tempo Real</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <div class="preview-box">
+                        <iframe id="iframePreview"></iframe>
+                    </div>
+                    <div class="mt-40 text-center">
+                        <span class="label-badge mb-20">PNG Gerado (700px)</span>
+                        <img id="imagePreview" style="width: 315px; border-radius: 4px; border: 1px solid #222;"
+                            alt="Carregando..." />
+                    </div>
+                </div>
             </div>
         </div>
-        <div style="display: flex; flex: 1; gap: 20px;">
-            <div class="pane-header">
-                <span>HTML (Editável)</span>
-                <span style="font-size: 0.8em; opacity: 0.7;">Variáveis: {{DATA}}, {{PREMIOS}}, {{LOTERICA}}</span>
-            </div>
-            <textarea id="codeEditor" spellcheck="false" placeholder="<!-- Digite seu HTML aqui -->"></textarea>
-        </div>
+    </main>
 
-        <div class="pane">
-            <div class="pane-header">Visualização Real</div>
-            <div class="preview-content">
-                <!-- Iframe para ver o HTML real -->
-                <div
-                    style="width: 100%; display: flex; justify-content: space-between; margin-bottom: 10px; color: #666; font-size: 0.8em;">
-                    <span>WEB PREVIEW (350px exibição)</span>
-                </div>
-                <div class="iframe-container">
-                    <iframe id="iframePreview"></iframe>
-                </div>
-
-                <!-- Imagem gerada pelo backend (Satori) -->
-                <div
-                    style="width: 100%; display: flex; justify-content: space-between; margin-top: 30px; margin-bottom: 10px; color: #666; font-size: 0.8em;">
-                    <span>IMAGE GENERATION (PNG 700px - 2x resolução)</span>
-                </div>
-                <img id="imagePreview" alt="Aguardando preview..." />
-            </div>
-        </div>
-    </div>
-
+    <script src="/admin/admin-common.js"></script>
     <script>
         const EDITOR = document.getElementById('codeEditor');
         const IFRAME = document.getElementById('iframePreview');
         const IMG = document.getElementById('imagePreview');
         const STATUS = document.getElementById('status');
 
-        // Template padrão com CSS inline e linha de prêmio customizável
-        const DEFAULT_TEMPLATE = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <title>Resultado {{LOTERICA}} - {{HORARIO}}</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: transparent; display: flex; justify-content: center; align-items: flex-start; font-family: 'Inter', sans-serif;">
-    <div style="display: flex; flex-direction: column; width: 700px; background-color: #ffffff; overflow: hidden; box-sizing: border-box;">
-        <!-- Título - CUSTOMIZE cores, fontes, etc -->
-        <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-weight: 700; padding: 20px 0; background-color: #f8f9fa; font-size: 52px; color: #1a1a1a; border-bottom: 2px solid #eeeeee; width: 700px; box-sizing: border-box;">
-            {{LOTERICA}}
-        </div>
-        <!-- Subtítulo -->
-        <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-weight: 700; padding: 20px 0; background-color: #f8f9fa; font-size: 36px; color: #1a1a1a; border-bottom: 2px solid #eeeeee; width: 700px; box-sizing: border-box;">
-            {{DATA}} - {{HORARIO}}
-        </div>
-        <!-- Tabela -->
-        <div style="display: flex; flex-direction: column; width: 700px; box-sizing: border-box;">
-            <!-- Cabeçalho -->
-            <div style="display: flex; flex-direction: row; width: 700px; background-color: #222222; box-sizing: border-box;">
-                <div style="display: flex; width: 140px; padding: 28px 8px; justify-content: center; align-items: center; text-align: center; font-weight: 700; font-size: 28px; color: #ffffff; text-transform: uppercase; box-sizing: border-box;">Prêmio</div>
-                <div style="display: flex; width: 220px; padding: 28px 8px; justify-content: center; align-items: center; text-align: center; font-weight: 700; font-size: 28px; color: #ffffff; text-transform: uppercase; box-sizing: border-box;">Milhar</div>
-                <div style="display: flex; width: 120px; padding: 28px 8px; justify-content: center; align-items: center; text-align: center; font-weight: 700; font-size: 28px; color: #ffffff; text-transform: uppercase; box-sizing: border-box;">Grupo</div>
-                <div style="display: flex; width: 220px; padding: 28px 8px; justify-content: center; align-items: center; text-align: center; font-weight: 700; font-size: 28px; color: #ffffff; text-transform: uppercase; box-sizing: border-box;">Animal</div>
-            </div>
-            <!-- Corpo -->
-            <div style="display: flex; flex-direction: column; width: 700px; box-sizing: border-box;">
-                {{PREMIOS}}
-            </div>
-        </div>
-    </div>
-</body>
-</html>
-
-<!-- ============================================================
-     TEMPLATE DE LINHA DE PRÊMIO - CUSTOMIZE TOTALMENTE!
-     ============================================================
-     Este bloco será REPETIDO para cada prêmio.
-     Variáveis: {{POSICAO}}, {{MILHAR}}, {{GRUPO}}, {{BICHO}}
-     NOTA: Valores em 2x para alta resolução (700px base)
-     ============================================================ -->
-<!-- PREMIO_ROW -->
-<div style="display: flex; flex-direction: row; width: 700px; background-color: #ffffff; border-bottom: 2px solid #eeeeee; box-sizing: border-box;">
-    <div style="display: flex; width: 140px; padding: 28px 8px; justify-content: center; align-items: center; text-align: center; font-size: 32px; color: #666666; box-sizing: border-box;">{{POSICAO}}º</div>
-    <div style="display: flex; width: 220px; padding: 28px 8px; justify-content: center; align-items: center; text-align: center; font-weight: bold; font-size: 36px; color: #000000; box-sizing: border-box;">{{MILHAR}}</div>
-    <div style="display: flex; width: 120px; padding: 28px 8px; justify-content: center; align-items: center; text-align: center; font-size: 32px; color: #666666; box-sizing: border-box;">{{GRUPO}}</div>
-    <div style="display: flex; width: 220px; padding: 28px 8px; justify-content: center; align-items: center; text-align: center; font-size: 32px; color: #444444; box-sizing: border-box;">{{BICHO}}</div>
-</div>
-<!-- /PREMIO_ROW -->`;
-
-
-        // Persistência da API Key na URL
-        const fetchWithKey = window.fetchAdmin;
-
-        // Validar se o HTML usa apenas CSS inline
-        function validateInlineCSS(html) {
-            // Verifica se há tags <style> ou <link> de CSS
-            const hasStyleTag = /<style[\s\S]*?>[\s\S]*?<\/style>/gi.test(html);
-            const hasLinkCSS = /<link[^>]+rel=["']stylesheet["'][^>]*>/gi.test(html);
-
-            if (hasStyleTag) {
-                return { valid: false, message: 'Erro: Use apenas CSS inline (style="..."). Tags <style> não são permitidas.' };
-            }
-            if (hasLinkCSS) {
-                return { valid: false, message: 'Erro: Use apenas CSS inline (style="..."). Links de CSS externos não são permitidos.' };
-            }
-            return { valid: true };
-        }
-
-        // Carregar template atual
         async function loadTemplate() {
             try {
-                const res = await fetchWithKey('/admin/api/template');
-                if (res.ok) {
-                    const data = await res.json();
-                    EDITOR.value = data.html || DEFAULT_TEMPLATE;
-                } else {
-                    EDITOR.value = DEFAULT_TEMPLATE;
-                }
+                const res = await window.fetchAdmin('/admin/api/template');
+                const data = await res.json();
+                EDITOR.value = data.html;
                 updatePreview();
-            } catch (e) {
-                console.error("Falha ao carregar", e);
-                EDITOR.value = DEFAULT_TEMPLATE;
-            }
+            } catch (e) { UI.toast('Erro ao carregar', 'error'); }
         }
 
-        // Gerar preview
         async function updatePreview() {
             const html = EDITOR.value;
             if (!html) return;
-
-            // Validar CSS inline
-            const validation = validateInlineCSS(html);
-            if (!validation.valid) {
-                STATUS.innerText = validation.message;
-                STATUS.style.color = '#ff5252';
-                return;
-            }
-            STATUS.style.color = '';
-
-            STATUS.innerText = 'Gerando...';
-
+            STATUS.innerText = 'Sincronizando...';
             try {
-                const res = await fetchWithKey('/admin/api/preview', {
+                const res = await window.fetchAdmin('/admin/api/preview', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ html })
                 });
-
-                if (!res.ok) throw new Error("Erro na API");
-
                 const data = await res.json();
-
-                // Atualizar Iframe
                 const iframeDoc = IFRAME.contentWindow.document;
                 iframeDoc.open();
                 iframeDoc.write(data.html);
                 iframeDoc.close();
-
-                // Atualizar Imagem
                 IMG.src = data.image;
-                STATUS.innerText = 'Atualizado!';
+                STATUS.innerText = 'Tudo certo';
                 setTimeout(() => STATUS.innerText = '', 2000);
-            } catch (e) {
-                console.error(e);
-                STATUS.innerText = 'Erro no preview.';
-            }
+            } catch (e) { STATUS.innerText = 'Erro no preview'; }
         }
 
-        // Salvar
         async function saveTemplate() {
-            const html = EDITOR.value;
-
-            // Validar CSS inline antes de salvar
-            const validation = validateInlineCSS(html);
-            if (!validation.valid) {
-                STATUS.innerText = validation.message;
-                STATUS.style.color = '#ff5252';
-                return;
-            }
-            STATUS.style.color = '';
-
-            STATUS.innerText = 'Salvando...';
-
+            UI.toast('Salvando...', 'info');
             try {
-                const res = await fetchWithKey('/admin/api/template', {
+                const res = await window.fetchAdmin('/admin/api/template', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ html })
+                    body: JSON.stringify({ html: EDITOR.value })
                 });
-
-                if (res.ok) {
-                    STATUS.innerText = 'Salvo com sucesso!';
-                    setTimeout(() => STATUS.innerText = '', 2000);
-                } else {
-                    STATUS.innerText = 'Erro ao salvar.';
-                }
-            } catch (e) {
-                console.error(e);
-                STATUS.innerText = 'Erro de conexão.';
-            }
+                if (res.ok) UI.toast('Template salvo com sucesso!');
+                else UI.toast('Erro ao salvar', 'error');
+            } catch (e) { UI.toast('Erro de conexão', 'error'); }
         }
 
-        // Auto-update com debounce
         let timeout;
         EDITOR.addEventListener('input', () => {
             clearTimeout(timeout);

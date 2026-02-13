@@ -49,6 +49,14 @@ export const SITE_NAVIGATIONS: Record<string, SiteNavigationConfig> = {
             { selector: 'body', action: 'scroll', delay: 1500 },
             { selector: 'body', action: 'wait', delay: 2000 },
         ]
+    },
+    'amigosdobicho.com/cotacoes': {
+        homeUrl: 'https://amigosdobicho.com/cotacoes',
+        steps: [
+            { selector: 'button', action: 'click', delay: 2000 }, // Botão JOGO DO BICHO
+            { selector: 'body', action: 'scroll', delay: 1500 },
+            { selector: 'body', action: 'wait', delay: 1000 },
+        ]
     }
 };
 

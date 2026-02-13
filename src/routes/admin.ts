@@ -61,6 +61,17 @@ export async function adminRoutes(app: FastifyInstance) {
         }
     });
 
+    server.get('/cotacoes', async (req, reply) => {
+        try {
+            const html = fs.readFileSync(path.resolve('public/admin/cotacoes.html'), 'utf-8');
+            reply.header('Content-Type', 'text/html');
+            return reply.send(html);
+        } catch (error) {
+            logger.error('Admin', 'Erro ao carregar cotacoes.html:', error);
+            return reply.status(500).send({ error: 'Erro ao carregar página de cotações' });
+        }
+    });
+
     // API: Obter Template Atual
     server.get('/api/template', {
         schema: {

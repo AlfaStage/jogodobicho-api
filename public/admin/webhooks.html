@@ -1,108 +1,21 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 
 <head>
     <meta charset="UTF-8">
-    <title>Gestão de Webhooks</title>
-    <link rel="stylesheet" href="../css/admin-theme.css">
-    <link rel="stylesheet" href="admin-common.css">
-    <script src="admin-common.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webhooks | Admin</title>
+    <link rel="stylesheet" href="/css/admin-theme.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* Ajustes específicos para Webhooks */
-        .webhook-list {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            margin-top: 30px;
+        .webhook-card {
+            transition: transform 0.2s;
         }
 
-        .webhook-item {
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            background: var(--surface-color);
-            border: var(--glass-border);
-            border-radius: 8px;
-            transition: all 0.2s;
+        .webhook-card:hover {
+            transform: translateY(-2px);
         }
 
-        .webhook-item:hover {
-            background: var(--surface-hover);
-            border-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .webhook-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .url-text {
-            font-family: var(--font-mono);
-            color: var(--primary-color);
-            word-break: break-all;
-            font-size: 0.9rem;
-        }
-
-        .webhook-id {
-            font-size: 0.75rem;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .webhook-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 0.8rem;
-            border-radius: 4px;
-            cursor: pointer;
-            border: none;
-            transition: all 0.2s;
-        }
-
-        .btn-config {
-            background: var(--primary-color);
-            color: #0a0a0a;
-        }
-
-        .btn-config:hover {
-            background: #00c853;
-        }
-
-        .btn-history {
-            background: #444;
-            color: white;
-        }
-
-        .btn-history:hover {
-            background: #555;
-        }
-
-        .btn-delete {
-            background: #dc3545;
-            color: white;
-        }
-
-        .btn-delete:hover {
-            background: #c82333;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: var(--text-secondary);
-            font-style: italic;
-            border: 1px dashed var(--border-color);
-            border-radius: 8px;
-        }
-
-        /* Modal styles */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -110,11 +23,12 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.85);
             z-index: 1000;
             justify-content: center;
             align-items: center;
             padding: 20px;
+            backdrop-filter: blur(8px);
         }
 
         .modal-overlay.active {
@@ -122,475 +36,168 @@
         }
 
         .modal-content {
-            background: var(--surface-color);
-            border: var(--glass-border);
-            border-radius: 12px;
+            background: #0a0a0a;
+            border: 1px solid var(--border-main);
+            border-radius: 16px;
             max-width: 800px;
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
-            padding: 30px;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .modal-title {
-            margin: 0;
-            font-size: 1.5rem;
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            color: var(--text-color);
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 5px;
+            padding: 32px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
         }
 
         .lotericas-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
             margin: 20px 0;
             max-height: 400px;
             overflow-y: auto;
-            padding: 10px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
+            padding: 16px;
+            background: #050505;
+            border-radius: 12px;
+            border: 1px solid var(--border-main);
         }
 
-        .loterica-checkbox {
+        .loterica-item {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 4px;
+            gap: 10px;
+            padding: 12px;
+            background: #111;
+            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.2s;
+            border: 1px solid transparent;
         }
 
-        .loterica-checkbox:hover {
-            background: rgba(255, 255, 255, 0.1);
+        .loterica-item:hover {
+            background: #181818;
+            border-color: var(--accent-green);
         }
 
-        .loterica-checkbox input {
+        .loterica-item input {
             width: 18px;
             height: 18px;
-            cursor: pointer;
-        }
-
-        .loterica-checkbox label {
-            cursor: pointer;
-            flex: 1;
-            font-size: 0.9rem;
-        }
-
-        .history-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-height: 400px;
-            overflow-y: auto;
-            margin-top: 20px;
-        }
-
-        .history-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 6px;
-            border-left: 3px solid;
-        }
-
-        .history-item.success {
-            border-left-color: #00e676;
-        }
-
-        .history-item.error {
-            border-left-color: #ff5252;
-        }
-
-        .history-status {
-            font-weight: bold;
-            font-size: 0.8rem;
-            padding: 4px 8px;
-            border-radius: 4px;
-        }
-
-        .history-status.success {
-            background: rgba(0, 230, 118, 0.2);
-            color: #00e676;
-        }
-
-        .history-status.error {
-            background: rgba(255, 82, 82, 0.2);
-            color: #ff5252;
-        }
-
-        .history-details {
-            font-size: 0.8rem;
-            color: #888;
-            margin-top: 4px;
-        }
-
-        .select-all-btn {
-            margin-bottom: 10px;
-            padding: 8px 16px;
-            background: var(--primary-color);
-            color: #0a0a0a;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .select-all-btn:hover {
-            background: #00c853;
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .btn-secondary {
-            background: #444;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .btn-secondary:hover {
-            background: #555;
-        }
-
-        .btn-primary {
-            background: var(--primary-color);
-            color: #0a0a0a;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .btn-primary:hover {
-            background: #00c853;
-        }
-
-        .stats-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 4px 10px;
-            background: rgba(0, 230, 118, 0.1);
-            border-radius: 12px;
-            font-size: 0.8rem;
-            margin-top: 10px;
-        }
-
-        .stats-badge.success {
-            color: #00e676;
-        }
-
-        .stats-badge.error {
-            color: #ff5252;
-            background: rgba(255, 82, 82, 0.1);
+            accent-color: var(--accent-green);
         }
     </style>
 </head>
 
 <body>
-    <div class="container" style="max-width: 900px; margin-top: 40px;">
-        <div class="card" style="padding: 30px;">
-            <h2 style="margin-top: 0">Registrar Novo Webhook</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 25px;">
-                Receba notificações JSON via POST sempre que um novo resultado for detectado.
-            </p>
-
-            <div style="display: flex; gap: 15px;">
-                <input type="url" id="urlInput" placeholder="https://seu-sistema.com.br/api/callback" required
-                    style="flex: 1;">
-                <button onclick="addWebhook()">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    Adicionar
-                </button>
+    <main>
+        <header class="page-header">
+            <div class="page-title">
+                <h1>Webhooks & Notificações</h1>
+                <p>Configure URLs externas para receber resultados em tempo real.</p>
             </div>
-        </div>
+        </header>
 
-        <div id="webhookList" class="webhook-list">
-            <div class="empty-state">Carregando...</div>
-        </div>
-    </div>
+        <section>
+            <div class="card">
+                <h3 class="mb-20">Novo Webhook</h3>
+                <div class="flex gap-10">
+                    <input type="url" id="urlInput" placeholder="https://seu-sistema.com.br/api/callback" class="w-full"
+                        aria-label="URL do Webhook">
+                    <button onclick="addWebhook()" class="primary" style="white-space: nowrap;">
+                        <i>➕</i> Registrar Webhook
+                    </button>
+                </div>
+            </div>
+        </section>
 
-    <!-- Modal de Configuração -->
+        <section class="mt-40">
+            <h3 class="mb-20">Webhooks Ativos</h3>
+            <div id="webhookList" class="grid grid-1">
+                <div class="card text-center text-muted" style="padding: 60px;">Carregando webhooks...</div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal Config -->
     <div id="configModal" class="modal-overlay">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Configurar Lotéricas</h3>
-                <button class="modal-close" onclick="closeModal('configModal')">&times;</button>
+            <div class="justify-between items-center flex mb-20">
+                <h3>Configurar Filtros de Lotéricas</h3>
+                <button onclick="closeModal('configModal')" class="secondary"
+                    style="padding: 5px 12px;">&times;</button>
             </div>
-            <p style="color: var(--text-secondary); margin-bottom: 15px;">
-                Selecione quais lotéricas irão disparar notificações para este webhook:
-            </p>
-            <button class="select-all-btn" onclick="toggleAllLotericas()">
-                Selecionar/Desselecionar Todas
-            </button>
-            <div id="lotericasContainer" class="lotericas-grid">
-                <!-- Lotéricas serão inseridas aqui -->
-            </div>
-            <div class="modal-actions">
-                <button class="btn-secondary" onclick="closeModal('configModal')">Cancelar</button>
-                <button class="btn-primary" onclick="saveLotericasConfig()">Salvar Configuração</button>
+            <p class="text-secondary mb-20">Selecione quais lotéricas irão disparar este webhook.</p>
+            <button class="secondary w-full mb-10" onclick="toggleAllLotericas()">Inverter Seleção</button>
+            <div id="lotericasContainer" class="lotericas-grid"></div>
+            <div class="flex gap-10 mt-20 justify-between">
+                <button class="secondary" onclick="closeModal('configModal')">Cancelar</button>
+                <button class="primary" onclick="saveLotericasConfig()">Salvar Configurações</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal de Histórico -->
+    <!-- Modal Histórico -->
     <div id="historyModal" class="modal-overlay">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Histórico de Disparos</h3>
-                <button class="modal-close" onclick="closeModal('historyModal')">&times;</button>
+            <div class="justify-between items-center flex mb-20">
+                <h3>Histórico de Envios</h3>
+                <button onclick="closeModal('historyModal')" class="secondary"
+                    style="padding: 5px 12px;">&times;</button>
             </div>
-            <div id="historyContainer" class="history-list">
-                <!-- Histórico será inserido aqui -->
-            </div>
-            <div class="modal-actions">
-                <button class="btn-secondary" onclick="closeModal('historyModal')">Fechar</button>
+            <div id="historyContainer" class="table-container">
+                <table class="w-full mt-20">
+                    <thead>
+                        <tr>
+                            <th>Evento</th>
+                            <th>Status</th>
+                            <th>Data/Hora</th>
+                            <th>Resposta</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table-body"></tbody>
+                </table>
             </div>
         </div>
     </div>
 
+    <script src="/admin/admin-common.js"></script>
     <script>
         const API_URL = '/v1/webhooks';
         let currentWebhookId = null;
-        let allLotericas = [];
         let selectedLotericas = [];
-
-        // Usar as funções globais do admin-common.js
-        const fetchWithKey = window.fetchAdmin;
 
         async function loadWebhooks() {
             try {
-                const res = await fetchWithKey(`${API_URL}/with-config`);
+                const res = await window.fetchAdmin(`${API_URL}/with-config`);
                 const webhooks = await res.json();
                 const list = document.getElementById('webhookList');
-                list.innerHTML = '';
 
                 if (webhooks.length === 0) {
-                    list.innerHTML = '<div class="empty-state">Nenhum webhook registrado.</div>';
+                    list.innerHTML = '<div class="card text-center text-muted" style="padding: 60px;">Nenhum webhook registrado.</div>';
                     return;
                 }
 
-                webhooks.forEach(w => {
-                    const enabledCount = w.lotericas.filter(l => l.enabled).length;
-                    const totalCount = w.lotericas.length;
-
-                    const div = document.createElement('div');
-                    div.className = 'webhook-item';
-                    div.innerHTML = `
-                        <div class="webhook-header">
-                            <div>
-                                <span class="url-text">${w.url}</span>
-                                <div class="webhook-id">ID: ${w.id}</div>
-                                <div class="stats-badge ${enabledCount === totalCount ? 'success' : ''}">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                    </svg>
-                                    ${enabledCount} de ${totalCount} lotéricas ativas
+                list.innerHTML = webhooks.map(w => {
+                    const activeCount = w.lotericas.filter(l => l.enabled).length;
+                    return `
+                        <div class="card webhook-card">
+                            <div class="flex justify-between items-start mb-20">
+                                <div>
+                                    <code class="text-success font-bold" style="font-size: 1.1rem; background: transparent; padding: 0;">${w.url}</code>
+                                    <div class="text-muted mt-10" style="font-size: 0.8rem;">UUID: ${w.id}</div>
+                                    <div class="badge ${activeCount > 0 ? 'badge-success' : 'badge-warning'} mt-10">
+                                        ${activeCount} lotéricas monitoradas
+                                    </div>
+                                </div>
+                                <div class="flex gap-10">
+                                    <button class="secondary" onclick="openConfigModal('${w.id}')"><i>⚙️</i></button>
+                                    <button class="secondary" onclick="testWebhook('${w.id}')"><i>⚡</i></button>
+                                    <button class="secondary" onclick="openHistoryModal('${w.id}')"><i>🕒</i></button>
+                                    <button class="secondary text-error" onclick="deleteWebhook('${w.id}')"><i>🗑️</i></button>
                                 </div>
                             </div>
                         </div>
-                        <div class="webhook-actions">
-                            <button class="btn-small btn-config" onclick="openConfigModal('${w.id}')">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                                </svg>
-                                Configurar Lotéricas
-                            </button>
-                            <button class="btn-small btn-history" onclick="testWebhook('${w.id}')">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
-                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                                </svg>
-                                Testar Conexão
-                             </button>
-                             <button class="btn-small btn-history" onclick="openHistoryModal('${w.id}')">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <polyline points="12 6 12 12 16 14"></polyline>
-                                </svg>
-                                Ver Histórico
-                            </button>
-                            <button class="btn-small btn-delete" onclick="deleteWebhook('${w.id}')">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
-                                    <polyline points="3 6 5 6 21 6"></polyline>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                </svg>
-                                Remover
-                            </button>
-                        </div>
                     `;
-                    list.appendChild(div);
-                });
+                }).join('');
             } catch (err) {
-                console.error(err);
-                document.getElementById('webhookList').innerHTML = '<div class="empty-state" style="color: var(--error-color)">Erro ao carregar lista.</div>';
+                UI.toast('Erro ao carregar webhooks', 'error');
             }
-        }
-
-        async function openConfigModal(webhookId) {
-            currentWebhookId = webhookId;
-
-            try {
-                // Carregar webhook específico com suas lotéricas
-                const res = await fetchWithKey(`${API_URL}/${webhookId}`);
-                const webhook = await res.json();
-
-                selectedLotericas = webhook.lotericas
-                    .filter(l => l.enabled)
-                    .map(l => l.slug);
-
-                renderLotericasCheckboxes(webhook.lotericas);
-                document.getElementById('configModal').classList.add('active');
-            } catch (err) {
-                console.error(err);
-                alert('Erro ao carregar configuração');
-            }
-        }
-
-        function renderLotericasCheckboxes(lotericas) {
-            const container = document.getElementById('lotericasContainer');
-            container.innerHTML = '';
-
-            lotericas.forEach(l => {
-                const div = document.createElement('div');
-                div.className = 'loterica-checkbox';
-                div.innerHTML = `
-                    <input type="checkbox" 
-                           id="lot-${l.slug}" 
-                           value="${l.slug}"
-                           ${selectedLotericas.includes(l.slug) ? 'checked' : ''}
-                           onchange="updateSelectedLotericas('${l.slug}', this.checked)">
-                    <label for="lot-${l.slug}">${l.nome}</label>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function updateSelectedLotericas(slug, checked) {
-            if (checked) {
-                if (!selectedLotericas.includes(slug)) {
-                    selectedLotericas.push(slug);
-                }
-            } else {
-                selectedLotericas = selectedLotericas.filter(s => s !== slug);
-            }
-        }
-
-        function toggleAllLotericas() {
-            const checkboxes = document.querySelectorAll('#lotericasContainer input[type="checkbox"]');
-            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-
-            checkboxes.forEach(cb => {
-                cb.checked = !allChecked;
-                updateSelectedLotericas(cb.value, !allChecked);
-            });
-        }
-
-        async function saveLotericasConfig() {
-            if (!currentWebhookId) return;
-
-            try {
-                const res = await fetchWithKey(`${API_URL}/${currentWebhookId}/lotericas`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ lotericas: selectedLotericas })
-                });
-
-                if (res.ok) {
-                    closeModal('configModal');
-                    loadWebhooks();
-                } else {
-                    alert('Erro ao salvar configuração');
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Erro de conexão');
-            }
-        }
-
-        async function openHistoryModal(webhookId) {
-            currentWebhookId = webhookId;
-
-            try {
-                const res = await fetchWithKey(`${API_URL}/${webhookId}/history?limit=50`);
-                const history = await res.json();
-
-                renderHistory(history);
-                document.getElementById('historyModal').classList.add('active');
-            } catch (err) {
-                console.error(err);
-                alert('Erro ao carregar histórico');
-            }
-        }
-
-        function renderHistory(history) {
-            const container = document.getElementById('historyContainer');
-
-            if (history.length === 0) {
-                container.innerHTML = '<div class="empty-state">Nenhum disparo registrado ainda.</div>';
-                return;
-            }
-
-            container.innerHTML = '';
-
-            history.forEach(item => {
-                const div = document.createElement('div');
-                div.className = `history-item ${item.status}`;
-
-                const date = new Date(item.created_at);
-                const formattedDate = date.toLocaleString('pt-BR');
-
-                div.innerHTML = `
-                    <div>
-                        <div><strong>${item.event}</strong></div>
-                        <div class="history-details">${formattedDate}</div>
-                        ${item.error_message ? `<div class="history-details" style="color: #ff5252;">${item.error_message}</div>` : ''}
-                    </div>
-                    <span class="history-status ${item.status}">
-                        ${item.status === 'success' ? '✓ Sucesso' : '✗ Erro'}
-                        ${item.status_code ? `(${item.status_code})` : ''}
-                    </span>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.remove('active');
-            currentWebhookId = null;
         }
 
         async function addWebhook() {
@@ -598,74 +205,107 @@
             const url = input.value;
             if (!url) return;
 
-            const btn = document.querySelector('button');
-            const oldText = btn.innerHTML;
-            btn.innerHTML = 'Salvando...';
-            btn.disabled = true;
-
             try {
-                const res = await fetchWithKey(API_URL, {
+                const res = await window.fetchAdmin(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url })
                 });
-
                 if (res.ok) {
                     input.value = '';
-                    await loadWebhooks();
-                } else {
-                    alert('Erro ao adicionar webhook');
+                    UI.toast('Webhook registrado com sucesso!');
+                    loadWebhooks();
                 }
             } catch (err) {
-                console.error(err);
-                alert('Erro de conexão');
-            } finally {
-                btn.innerHTML = oldText;
-                btn.disabled = false;
+                UI.toast('Erro ao registrar', 'error');
             }
+        }
+
+        async function openConfigModal(id) {
+            currentWebhookId = id;
+            try {
+                const res = await window.fetchAdmin(`${API_URL}/${id}`);
+                const webhook = await res.json();
+                selectedLotericas = webhook.lotericas.filter(l => l.enabled).map(l => l.slug);
+
+                const container = document.getElementById('lotericasContainer');
+                container.innerHTML = webhook.lotericas.map(l => `
+                    <label class="loterica-item">
+                        <input type="checkbox" value="${l.slug}" ${selectedLotericas.includes(l.slug) ? 'checked' : ''} onchange="updateLoterica('${l.slug}', this.checked)">
+                        <span>${l.nome}</span>
+                    </label>
+                `).join('');
+
+                document.getElementById('configModal').classList.add('active');
+            } catch (err) { UI.toast('Erro ao carregar config', 'error'); }
+        }
+
+        function updateLoterica(slug, checked) {
+            if (checked) selectedLotericas.push(slug);
+            else selectedLotericas = selectedLotericas.filter(s => s !== slug);
+        }
+
+        function toggleAllLotericas() {
+            const cbs = document.querySelectorAll('#lotericasContainer input');
+            const allChecked = Array.from(cbs).every(c => c.checked);
+            cbs.forEach(c => {
+                c.checked = !allChecked;
+                updateLoterica(c.value, !allChecked);
+            });
+        }
+
+        async function saveLotericasConfig() {
+            try {
+                await window.fetchAdmin(`${API_URL}/${currentWebhookId}/lotericas`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lotericas: selectedLotericas })
+                });
+                UI.toast('Configuração salva!');
+                closeModal('configModal');
+                loadWebhooks();
+            } catch (err) { UI.toast('Erro ao salvar', 'error'); }
+        }
+
+        async function openHistoryModal(id) {
+            try {
+                const res = await window.fetchAdmin(`${API_URL}/${id}/history?limit=20`);
+                const history = await res.json();
+                const tbody = document.getElementById('history-table-body');
+
+                tbody.innerHTML = history.map(h => `
+                    <tr>
+                        <td class="font-bold">${h.event}</td>
+                        <td><span class="badge ${h.status === 'success' ? 'badge-success' : 'badge-error'}">${h.status}</span></td>
+                        <td class="text-secondary">${new Date(h.created_at).toLocaleString('pt-BR')}</td>
+                        <td class="font-mono text-muted text-secondary" style="font-size: 0.75rem;">${h.status_code || '-'}</td>
+                    </tr>
+                `).join('');
+                document.getElementById('historyModal').classList.add('active');
+            } catch (err) { UI.toast('Erro ao carregar histórico', 'error'); }
         }
 
         async function testWebhook(id) {
-            if (!confirm('Enviar notificação de teste agora?')) return;
-
+            UI.toast('Enviando teste...', 'info');
             try {
-                const res = await fetchWithKey(`${API_URL}/${id}/test`, { method: 'POST' });
+                const res = await window.fetchAdmin(`${API_URL}/${id}/test`, { method: 'POST' });
                 const result = await res.json();
-
-                if (res.ok) {
-                    alert(`✅ Sucesso!\nStatus: ${result.status}\nCódigo HTTP: ${result.http_code}`);
-                } else {
-                    alert(`❌ Falha no teste:\n${result.message || result.error || 'Erro desconhecido'}`);
-                }
-                loadWebhooks(); // Recarregar para ver o log no histórico
-            } catch (err) {
-                console.error(err);
-                alert('Erro ao realizar teste de conexão');
-            }
+                if (res.ok) UI.toast(`Teste bem sucedido! HTTP ${result.http_code}`);
+                else UI.toast(`Falha no teste: ${result.message}`, 'error');
+            } catch (err) { UI.toast('Erro na conexão', 'error'); }
         }
 
         async function deleteWebhook(id) {
-            if (!confirm('Deseja realmente remover este webhook?')) return;
-
+            if (!confirm('Deseja excluir este webhook?')) return;
             try {
-                await fetchWithKey(`${API_URL}/${id}`, { method: 'DELETE' });
+                await window.fetchAdmin(`${API_URL}/${id}`, { method: 'DELETE' });
+                UI.toast('Removido');
                 loadWebhooks();
-            } catch (err) {
-                console.error(err);
-                alert("Erro ao deletar");
-            }
+            } catch (err) { UI.toast('Erro ao excluir', 'error'); }
         }
 
-        // Fechar modal ao clicar fora
-        document.querySelectorAll('.modal-overlay').forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.classList.remove('active');
-                }
-            });
-        });
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
-        // Init
         loadWebhooks();
     </script>
 </body>

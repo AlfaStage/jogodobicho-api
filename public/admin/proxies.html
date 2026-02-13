@@ -1,791 +1,228 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 
 <head>
     <meta charset="UTF-8">
-    <title>Gerenciamento de Proxies - Screpy</title>
-    <link rel="stylesheet" href="../css/admin-theme.css">
-    <link rel="stylesheet" href="admin-common.css">
-    <script src="admin-common.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proxies | Admin</title>
+    <link rel="stylesheet" href="/css/admin-theme.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 24px;
-        }
-
-        .page-header p {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            margin-top: 4px;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        /* Stats Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 12px;
-            margin-bottom: 24px;
-        }
-
-        .stat-card {
-            text-align: left;
-            padding: 16px;
-        }
-
-        .stat-label {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-secondary);
-            margin-bottom: 6px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .stat-value {
-            font-size: 1.8rem;
-            font-weight: 700;
-        }
-
-        .stat-value.green {
-            color: var(--accent-green);
-        }
-
-        .stat-value.red {
-            color: var(--accent-red);
-        }
-
-        .stat-value.blue {
-            color: var(--accent-blue);
-        }
-
-        .stat-value.yellow {
-            color: var(--accent-yellow);
-        }
-
-        .stat-sub {
-            font-size: 0.7rem;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-
-        /* Tabs */
-        .tabs {
-            display: flex;
-            gap: 4px;
-            border-bottom: 1px solid var(--border-color);
-            padding: 0 20px;
-            margin-bottom: 0;
-        }
-
-        .tab-btn {
-            background: transparent !important;
-            color: var(--text-secondary) !important;
-            border: none;
-            padding: 12px 16px;
-            border-radius: 0;
-            font-size: 0.85rem;
-            font-weight: 500;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            box-shadow: none !important;
-            transform: none !important;
-        }
-
-        .tab-btn:hover {
-            color: var(--text-primary) !important;
-            background: rgba(255, 255, 255, 0.03) !important;
-            transform: none !important;
-            box-shadow: none !important;
-        }
-
-        .tab-btn.active {
-            color: var(--accent-green) !important;
-            border-bottom-color: var(--accent-green);
-        }
-
-        .tab-panel {
-            display: none;
-            padding: 20px;
-        }
-
-        .tab-panel.active {
-            display: block;
-        }
-
-        /* Proxy Table */
-        .proxy-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .proxy-table th {
-            text-align: left;
-            font-size: 0.7rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            padding: 10px 12px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .proxy-table td {
-            padding: 10px 12px;
-            font-size: 0.85rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-            vertical-align: middle;
-        }
-
-        .proxy-table tr:hover td {
-            background: var(--bg-hover);
-        }
-
-        .proxy-host {
-            font-family: var(--font-mono);
-            font-weight: 600;
-            font-size: 0.8rem;
-        }
-
-        /* Badges */
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 0.7rem;
-            font-weight: 600;
-        }
-
-        .badge-alive {
-            background: rgba(34, 197, 94, 0.15);
-            color: var(--accent-green);
-        }
-
-        .badge-dead {
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--accent-red);
-        }
-
-        .badge-untested {
-            background: rgba(136, 136, 136, 0.15);
-            color: var(--text-secondary);
-        }
-
-        .badge-protocol {
-            background: rgba(59, 130, 246, 0.15);
-            color: var(--accent-blue);
-        }
-
-        .badge-source {
-            background: rgba(136, 136, 136, 0.1);
-            color: var(--text-secondary);
-        }
-
-        /* Toggle */
-        .toggle {
-            width: 34px;
-            height: 18px;
-            border-radius: 9px;
-            background: #333;
-            position: relative;
-            cursor: pointer;
-            transition: background 0.3s;
-            display: inline-block;
-        }
-
-        .toggle.active {
-            background: var(--accent-green);
-        }
-
-        .toggle::after {
-            content: '';
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background: white;
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            transition: transform 0.3s;
-        }
-
-        .toggle.active::after {
-            transform: translateX(16px);
-        }
-
-        /* Latency bar */
-        .latency-bar {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.75rem;
-        }
-
-        .latency-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-        }
-
-        .latency-good {
-            background: var(--accent-green);
-        }
-
-        .latency-ok {
-            background: var(--accent-yellow);
-        }
-
-        .latency-bad {
-            background: var(--accent-red);
-        }
-
-        /* Source breakdown */
-        .source-grid {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 8px;
-        }
-
         .source-chip {
-            display: flex;
-            align-items: center;
-            gap: 6px;
             padding: 6px 12px;
             border-radius: 8px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-color);
+            background: #111;
+            border: 1px solid var(--border-main);
             font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .source-chip .count {
+            color: var(--accent-green);
             font-weight: 700;
-            color: var(--accent-green);
         }
 
-        /* Error text */
-        .error-text {
-            color: var(--accent-red);
-            font-size: 0.7rem;
-            max-width: 180px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        /* Bulk form */
-        .form-card {
-            padding: 24px;
-        }
-
-        .form-card textarea {
-            min-height: 140px;
-            font-family: var(--font-mono);
-            font-size: 0.8rem;
-            line-height: 1.4;
-        }
-
-        .formats-list {
+        .tab-nav {
             display: flex;
-            gap: 12px;
-            margin: 12px 0;
-            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-main);
+            padding-bottom: 10px;
         }
 
-        .format-tag {
-            background: var(--bg-primary);
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-family: var(--font-mono);
-            font-size: 0.75rem;
-            color: var(--accent-green);
-        }
-
-        .bulk-result {
-            display: none;
-            margin-top: 16px;
-            padding: 12px;
-            border-radius: 8px;
-            background: var(--bg-primary);
-        }
-
-        /* Progress indicator */
-        .progress-bar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 3px;
-            background: var(--accent-green);
-            transition: width 0.3s;
-            z-index: 200;
-            box-shadow: 0 0 10px var(--accent-green);
-            display: none;
-        }
-
-        .progress-bar.active {
-            display: block;
-            animation: progressPulse 1.5s ease infinite;
-        }
-
-        @keyframes progressPulse {
-            0% {
-                width: 10%;
-            }
-
-            50% {
-                width: 70%;
-            }
-
-            100% {
-                width: 95%;
-            }
-        }
-
-        /* Score bar */
-        .score-bar {
-            width: 50px;
-            height: 6px;
-            background: #333;
-            border-radius: 3px;
-            overflow: hidden;
-            display: inline-block;
-            vertical-align: middle;
-            margin-right: 4px;
-        }
-
-        .score-fill {
-            height: 100%;
-            border-radius: 3px;
-            transition: width 0.3s;
-        }
-
-        /* Action buttons */
-        .btn-icon {
-            width: 30px;
-            height: 30px;
-            padding: 0;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 6px;
-            font-size: 0.8rem;
+        .tab-nav button {
             background: transparent;
-            border: 1px solid var(--border-color);
+            border: none;
+            padding: 8px 16px;
             color: var(--text-secondary);
             cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: none !important;
-            transform: none !important;
+            font-weight: 600;
         }
 
-        .btn-icon:hover {
-            background: var(--bg-hover);
-            border-color: rgba(255, 255, 255, 0.2);
-            color: var(--text-primary);
-            transform: none !important;
-            box-shadow: none !important;
+        .tab-nav button.active {
+            color: var(--accent-green);
+            border-bottom: 2px solid var(--accent-green);
         }
 
-        .btn-icon.danger:hover {
-            background: rgba(239, 68, 68, 0.2);
-            border-color: var(--accent-red);
-            color: var(--accent-red);
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
         }
     </style>
 </head>
 
 <body>
-    <div class="progress-bar" id="progressBar"></div>
-
     <main>
-        <!-- Page Header -->
-        <div class="page-header">
-            <div>
-                <h2 style="margin-bottom: 0;">🛡️ Gerenciamento de Proxies</h2>
-                <p>Coleta automática de 4 fontes gratuitas • Validação TCP a cada minuto • Proxy usado apenas como
-                    fallback</p>
+        <header class="page-header">
+            <div class="page-title">
+                <h1>Infraestrutura de Proxies</h1>
+                <p>Monitoramento e coleta automática de proxies para fallback de scraping.</p>
             </div>
-            <div class="header-actions">
-                <button class="secondary" onclick="triggerCollect()" id="btnCollect">🔄 Coletar Agora</button>
-                <button class="secondary" onclick="triggerTest()" id="btnTest">🧪 Testar Todos</button>
-                <button onclick="loadData()">📊 Atualizar</button>
+            <div class="page-actions">
+                <button class="secondary" onclick="triggerCollect()" id="btnCollect">🔄 Coletar</button>
+                <button class="secondary" onclick="triggerTest()" id="btnTest">🧪 Testar</button>
+                <button class="primary" onclick="loadData()">📊 Atualizar</button>
+            </div>
+        </header>
+
+        <div class="grid grid-4" id="statsGrid">
+            <div class="card">
+                <div class="text-muted" style="font-size: 0.75rem; text-transform: uppercase;">Total</div>
+                <h2 id="statTotal" class="mt-10">0</h2>
+            </div>
+            <div class="card">
+                <div class="text-muted" style="font-size: 0.75rem; text-transform: uppercase;">Vivos</div>
+                <h2 id="statAlive" class="mt-10 text-success">0</h2>
+            </div>
+            <div class="card">
+                <div class="text-muted" style="font-size: 0.75rem; text-transform: uppercase;">Taxa Sucesso</div>
+                <h2 id="statRate" class="mt-10">0%</h2>
+            </div>
+            <div class="card">
+                <div class="text-muted" style="font-size: 0.75rem; text-transform: uppercase;">Blacklist</div>
+                <h2 id="statBlacklist" class="mt-10 text-error">0</h2>
             </div>
         </div>
 
-        <!-- Stats -->
-        <div class="stats-grid" id="statsGrid">
-            <div class="card stat-card">
-                <div class="stat-label">📦 Total</div>
-                <div class="stat-value blue" id="statTotal">0</div>
-            </div>
-            <div class="card stat-card">
-                <div class="stat-label">🟢 Vivos</div>
-                <div class="stat-value green" id="statAlive">0</div>
-            </div>
-            <div class="card stat-card">
-                <div class="stat-label">🔴 Mortos</div>
-                <div class="stat-value red" id="statDead">0</div>
-            </div>
-            <div class="card stat-card">
-                <div class="stat-label">✅ Habilitados</div>
-                <div class="stat-value green" id="statEnabled">0</div>
-            </div>
-            <div class="card stat-card">
-                <div class="stat-label">🎯 Taxa de Sucesso</div>
-                <div class="stat-value yellow" id="statRate">0%</div>
-                <div class="stat-sub" id="statRateDetail">0 / 0</div>
-            </div>
-            <div class="card stat-card">
-                <div class="stat-label">⛔ Blacklistados</div>
-                <div class="stat-value red" id="statBlacklist">0</div>
-            </div>
-        </div>
+        <div class="flex gap-10 mt-20 flex-wrap" id="sourceGrid"></div>
 
-        <!-- Source breakdown -->
-        <div class="source-grid" id="sourceGrid"></div>
-
-        <!-- Main card with tabs -->
-        <div class="card" style="margin-top: 24px; overflow: visible;">
-            <div class="tabs">
-                <button class="tab-btn active" onclick="switchTab('list', this)">📋 Lista de Proxies</button>
-                <button class="tab-btn" onclick="switchTab('import', this)">📤 Importar</button>
+        <section class="mt-40">
+            <div class="tab-nav">
+                <button onclick="switchTab('list', this)" class="active">📋 Lista</button>
+                <button onclick="switchTab('import', this)">📤 Importar</button>
             </div>
 
-            <!-- Tab: List -->
-            <div class="tab-panel active" id="tab-list">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <span style="font-size: 0.8rem; color: var(--text-secondary);" id="proxyCount">0 proxies</span>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="secondary" onclick="clearDead()"
-                            style="font-size: 0.75rem; padding: 4px 10px;">🗑️ Limpar Mortos</button>
-                        <button class="secondary" onclick="resetStats()"
-                            style="font-size: 0.75rem; padding: 4px 10px;">📊 Resetar Stats</button>
-                        <button class="secondary" onclick="clearBlacklist()"
-                            style="font-size: 0.75rem; padding: 4px 10px;">🔓 Limpar Blacklist</button>
+            <div id="tab-list" class="tab-content active">
+                <div class="card" style="padding:0; overflow:hidden;">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Proxy</th>
+                                    <th>Proto</th>
+                                    <th>Fonte</th>
+                                    <th>Latência</th>
+                                    <th>Sucesso</th>
+                                    <th>Último Teste</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="proxyList">
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted" style="padding:40px;">Carregando...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-                <div style="overflow-x: auto;">
-                    <table class="proxy-table">
-                        <thead>
-                            <tr>
-                                <th>ON</th>
-                                <th>Status</th>
-                                <th>Proxy</th>
-                                <th>Proto</th>
-                                <th>Fonte</th>
-                                <th>Latência</th>
-                                <th>Score</th>
-                                <th>Sucesso</th>
-                                <th>Erros</th>
-                                <th>Último Teste</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="proxyList">
-                            <tr>
-                                <td colspan="11">
-                                    <div class="empty-state" style="padding: 40px;">Carregando...</div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
             </div>
 
-            <!-- Tab: Import -->
-            <div class="tab-panel" id="tab-import">
-                <div class="form-card">
-                    <h3>📤 Importar Proxies Manualmente</h3>
-                    <p style="color: var(--text-secondary); font-size: 0.8rem; margin: 8px 0;">
-                        Cole a lista de proxies, um por linha. Formatos aceitos:
-                    </p>
-                    <div class="formats-list">
-                        <span class="format-tag">http://user:pass@host:port</span>
-                        <span class="format-tag">host:port:user:pass</span>
-                        <span class="format-tag">host:port</span>
-                    </div>
-                    <form onsubmit="bulkImport(event)">
-                        <textarea id="bulkText" placeholder="proxy1.example.com:8080
-proxy2.example.com:8080:user:pass
-http://user:pass@proxy3.example.com:3128
-# Linhas com # são ignoradas"></textarea>
-                        <div style="margin-top: 12px; display: flex; gap: 8px;">
-                            <button type="submit">Importar Proxies</button>
-                        </div>
-                    </form>
-                    <div class="bulk-result" id="bulkResult"></div>
+            <div id="tab-import" class="tab-content">
+                <div class="card">
+                    <h3>Importação em Massa</h3>
+                    <p class="text-secondary mb-20">Cole a lista de proxies (host:port, user:pass@host:port, etc).</p>
+                    <textarea id="bulkText" rows="10" class="w-full mb-20"
+                        placeholder="proxy1.example.com:8080..."></textarea>
+                    <button class="primary" onclick="bulkImport()">Iniciar Importação</button>
                 </div>
             </div>
-        </div>
-
-        <!-- Timestamps -->
-        <div style="margin-top: 16px; display: flex; gap: 24px; color: var(--text-secondary); font-size: 0.75rem;">
-            <span>Última coleta: <strong id="tsCollect">—</strong></span>
-            <span>Último teste: <strong id="tsTest">—</strong></span>
-        </div>
+        </section>
     </main>
 
+    <script src="/admin/admin-common.js"></script>
     <script>
-        // Usar as funções globais do admin-common.js
-        const apiFetch = async (url, opts = {}) => {
-            const res = await window.fetchAdmin(url, opts);
-            return res.json();
-        };
-
-        function showProgress(show) {
-            document.getElementById('progressBar').classList.toggle('active', show);
+        async function loadData() {
+            try {
+                const res = await window.fetchAdmin('/admin/proxies/list');
+                const data = await res.json();
+                renderStats(data.stats);
+                renderProxies(data.proxies);
+            } catch (err) { UI.toast('Erro ao carregar dados', 'error'); }
         }
 
-        function showToast(msg, type = 'success') {
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.style.borderLeft = `3px solid ${type === 'success' ? 'var(--accent-green)' : 'var(--accent-red)'}`;
-            toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span><span>${msg}</span>`;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3500);
+        function renderStats(s) {
+            document.getElementById('statTotal').innerText = s.total;
+            document.getElementById('statAlive').innerText = s.alive;
+            document.getElementById('statBlacklist').innerText = s.blacklisted;
+            const total = s.total_success + s.total_errors;
+            document.getElementById('statRate').innerText = total > 0 ? ((s.total_success / total) * 100).toFixed(1) + '%' : '0%';
+
+            const sourceGrid = document.getElementById('sourceGrid');
+            sourceGrid.innerHTML = Object.entries(s.bySource || {}).map(([src, count]) => `
+                <div class="source-chip"><span>${src}</span> <span class="count">${count}</span></div>
+            `).join('');
+        }
+
+        function renderProxies(proxies) {
+            const tbody = document.getElementById('proxyList');
+            tbody.innerHTML = proxies.map(p => `
+                <tr>
+                    <td><span class="badge ${p.alive ? 'badge-success' : 'badge-error'}">${p.alive ? 'Online' : 'Offline'}</span></td>
+                    <td class="font-mono" style="font-size: 0.85rem;">${p.host}:${p.port}</td>
+                    <td><span class="badge" style="background: #222;">${p.protocol.toUpperCase()}</span></td>
+                    <td><span class="text-muted">${p.source || 'Manual'}</span></td>
+                    <td>${p.latency_ms ? `<span class="text-success">${p.latency_ms}ms</span>` : '-'}</td>
+                    <td><span class="text-success">${p.success_count}</span> / <span class="text-error">${p.error_count}</span></td>
+                    <td class="text-secondary" style="font-size: 0.8rem;">${p.last_tested_at ? new Date(p.last_tested_at).toLocaleString('pt-BR') : '-'}</td>
+                    <td><button class="secondary text-error" onclick="removeProxy('${p.id}')">🗑️</button></td>
+                </tr>
+            `).join('');
+        }
+
+        async function triggerCollect() {
+            UI.toast('Coleta de proxies iniciada...', 'info');
+            try {
+                const data = await (await window.fetchAdmin('/admin/proxies/collect', { method: 'POST' })).json();
+                UI.toast(`Coleta concluída! ${data.added} novos proxies.`);
+                loadData();
+            } catch (err) { UI.toast('Erro na coleta', 'error'); }
+        }
+
+        async function triggerTest() {
+            UI.toast('Iniciando testes de conectividade...', 'info');
+            try {
+                const data = await (await window.fetchAdmin('/admin/proxies/test-all', { method: 'POST' })).json();
+                UI.toast(`Testes finalizados! ${data.alive} vivos.`);
+                loadData();
+            } catch (err) { UI.toast('Erro nos testes', 'error'); }
+        }
+
+        async function removeProxy(id) {
+            if (!confirm('Excluir este proxy?')) return;
+            try {
+                await window.fetchAdmin(`/admin/proxies/${id}`, { method: 'DELETE' });
+                UI.toast('Removido');
+                loadData();
+            } catch (err) { UI.toast('Erro ao remover', 'error'); }
+        }
+
+        async function bulkImport() {
+            const text = document.getElementById('bulkText').value;
+            if (!text) return;
+            try {
+                const data = await (await window.fetchAdmin('/admin/proxies/bulk', { method: 'POST', body: JSON.stringify({ text }) })).json();
+                UI.toast(`${data.added} proxies importados!`);
+                loadData();
+                switchTab('list', document.querySelector('.tab-nav button'));
+            } catch (err) { UI.toast('Erro na importação', 'error'); }
         }
 
         function switchTab(tab, btn) {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab-nav button').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             btn.classList.add('active');
             document.getElementById(`tab-${tab}`).classList.add('active');
         }
 
-        function fmtDate(d) {
-            if (!d) return '—';
-            return new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        }
-
-        function getScoreColor(score) {
-            if (score >= 70) return 'var(--accent-green)';
-            if (score >= 40) return 'var(--accent-yellow)';
-            return 'var(--accent-red)';
-        }
-
-        function getLatencyClass(ms) {
-            if (!ms) return 'latency-bad';
-            if (ms <= 500) return 'latency-good';
-            if (ms <= 1200) return 'latency-ok';
-            return 'latency-bad';
-        }
-
-        async function loadData() {
-            try {
-                const data = await apiFetch('/admin/proxies/list');
-                updateStats(data.stats);
-                renderList(data.proxies);
-            } catch (err) {
-                console.error(err);
-                showToast('Erro ao carregar dados', 'error');
-            }
-        }
-
-        function updateStats(s) {
-            document.getElementById('statTotal').textContent = s.total;
-            document.getElementById('statAlive').textContent = s.alive;
-            document.getElementById('statDead').textContent = s.dead;
-            document.getElementById('statEnabled').textContent = s.enabled;
-            document.getElementById('statBlacklist').textContent = s.blacklisted;
-
-            const total = s.total_success + s.total_errors;
-            const rate = total > 0 ? ((s.total_success / total) * 100).toFixed(1) : '0';
-            document.getElementById('statRate').textContent = `${rate}%`;
-            document.getElementById('statRateDetail').textContent = `${s.total_success} ✓ / ${s.total_errors} ✗`;
-
-            document.getElementById('tsCollect').textContent = fmtDate(s.lastCollectedAt);
-            document.getElementById('tsTest').textContent = fmtDate(s.lastTestedAt);
-
-            // Source breakdown
-            const sourceGrid = document.getElementById('sourceGrid');
-            sourceGrid.innerHTML = Object.entries(s.bySource || {})
-                .map(([src, count]) => `<div class="source-chip"><span>${src}</span><span class="count">${count}</span></div>`)
-                .join('');
-
-            // Add protocol chips
-            const protocolChips = Object.entries(s.byProtocol || {})
-                .map(([proto, count]) => `<div class="source-chip"><span>${proto.toUpperCase()}</span><span class="count">${count}</span></div>`)
-                .join('');
-            sourceGrid.innerHTML += protocolChips;
-        }
-
-        function renderList(proxies) {
-            const tbody = document.getElementById('proxyList');
-            document.getElementById('proxyCount').textContent = `${proxies.length} proxies`;
-
-            if (proxies.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state" style="padding: 40px;"><p>Nenhum proxy cadastrado. Clique em "🔄 Coletar Agora" para buscar proxies automaticamente.</p></div></td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = proxies.map(p => {
-                const statusBadge = p.last_tested_at
-                    ? (p.alive ? '<span class="badge badge-alive">● Vivo</span>' : '<span class="badge badge-dead">● Morto</span>')
-                    : '<span class="badge badge-untested">● N/T</span>';
-
-                const scoreColor = getScoreColor(p.score);
-                const latencyClass = getLatencyClass(p.latency_ms);
-
-                return `<tr>
-                    <td><div class="toggle ${p.enabled ? 'active' : ''}" onclick="toggleProxy('${p.id}')" title="${p.enabled ? 'Habilitado' : 'Desabilitado'}"></div></td>
-                    <td>${statusBadge}</td>
-                    <td class="proxy-host">${p.host}:${p.port}</td>
-                    <td><span class="badge badge-protocol">${p.protocol.toUpperCase()}</span></td>
-                    <td><span class="badge badge-source">${p.source || 'Manual'}</span></td>
-                    <td>
-                        <div class="latency-bar">
-                            <span class="latency-dot ${latencyClass}"></span>
-                            <span>${p.latency_ms ? p.latency_ms + 'ms' : '—'}</span>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="score-bar"><div class="score-fill" style="width: ${p.score}%; background: ${scoreColor};"></div></div>
-                        <span style="font-size: 0.75rem; color: ${scoreColor};">${p.score}</span>
-                    </td>
-                    <td><span style="color: var(--accent-green); font-size: 0.8rem;">${p.success_count}</span></td>
-                    <td>
-                        <span style="color: var(--accent-red); font-size: 0.8rem;">${p.error_count}</span>
-                        ${p.last_error ? `<div class="error-text" title="${p.last_error}">${p.last_error}</div>` : ''}
-                    </td>
-                    <td style="font-size: 0.75rem; color: var(--text-secondary);">${fmtDate(p.last_tested_at)}</td>
-                    <td><button class="btn-icon danger" onclick="removeProxy('${p.id}')" title="Remover">🗑️</button></td>
-                </tr>`;
-            }).join('');
-        }
-
-        async function triggerCollect() {
-            const btn = document.getElementById('btnCollect');
-            btn.disabled = true;
-            btn.textContent = '⏳ Coletando...';
-            showProgress(true);
-
-            try {
-                const data = await apiFetch('/admin/proxies/collect', { method: 'POST' });
-                showToast(`Coleta finalizada: ${data.total} encontrados, ${data.added} novos`);
-                loadData();
-            } catch (err) {
-                showToast('Erro na coleta', 'error');
-            } finally {
-                showProgress(false);
-                btn.disabled = false;
-                btn.textContent = '🔄 Coletar Agora';
-            }
-        }
-
-        async function triggerTest() {
-            const btn = document.getElementById('btnTest');
-            btn.disabled = true;
-            btn.textContent = '⏳ Testando...';
-            showProgress(true);
-
-            try {
-                const data = await apiFetch('/admin/proxies/test-all', { method: 'POST' });
-                showToast(`Teste finalizado: ${data.alive} vivos, ${data.dead} mortos`);
-                loadData();
-            } catch (err) {
-                showToast('Erro nos testes', 'error');
-            } finally {
-                showProgress(false);
-                btn.disabled = false;
-                btn.textContent = '🧪 Testar Todos';
-            }
-        }
-
-        async function toggleProxy(id) {
-            try {
-                await apiFetch(`/admin/proxies/${id}/toggle`, { method: 'POST' });
-                loadData();
-            } catch (err) {
-                showToast('Erro ao alternar proxy', 'error');
-            }
-        }
-
-        async function removeProxy(id) {
-            if (!confirm('Remover este proxy?')) return;
-            try {
-                await apiFetch(`/admin/proxies/${id}`, { method: 'DELETE' });
-                showToast('Proxy removido');
-                loadData();
-            } catch (err) {
-                showToast('Erro ao remover', 'error');
-            }
-        }
-
-        async function clearDead() {
-            if (!confirm('Remover todos os proxies mortos?')) return;
-            try {
-                const data = await apiFetch('/admin/proxies/clear-dead', { method: 'POST' });
-                showToast(`${data.removed} proxies mortos removidos`);
-                loadData();
-            } catch (err) {
-                showToast('Erro', 'error');
-            }
-        }
-
-        async function resetStats() {
-            if (!confirm('Resetar todas as estatísticas?')) return;
-            try {
-                await apiFetch('/admin/proxies/reset-stats', { method: 'POST' });
-                showToast('Estatísticas resetadas');
-                loadData();
-            } catch (err) {
-                showToast('Erro', 'error');
-            }
-        }
-
-        async function clearBlacklist() {
-            try {
-                await apiFetch('/admin/proxies/clear-blacklist', { method: 'POST' });
-                showToast('Blacklist limpa');
-                loadData();
-            } catch (err) {
-                showToast('Erro', 'error');
-            }
-        }
-
-        async function bulkImport(e) {
-            e.preventDefault();
-            const text = document.getElementById('bulkText').value;
-            if (!text.trim()) return showToast('Cole a lista de proxies', 'error');
-
-            try {
-                const data = await apiFetch('/admin/proxies/bulk', { method: 'POST', body: JSON.stringify({ text }) });
-                const resultDiv = document.getElementById('bulkResult');
-                resultDiv.style.display = 'block';
-                resultDiv.innerHTML = `
-                    <div style="display: flex; gap: 12px; margin-bottom: 8px;">
-                        <span class="badge badge-alive">✅ ${data.added} adicionados</span>
-                        <span class="badge badge-untested">⏭️ ${data.skipped} duplicados</span>
-                        ${data.errors?.length ? `<span class="badge badge-dead">❌ ${data.errors.length} erros</span>` : ''}
-                    </div>
-                    ${data.errors?.length ? `<div style="color: var(--accent-red); font-size: 0.75rem; margin-top: 8px;">${data.errors.join('<br>')}</div>` : ''}
-                `;
-
-                if (data.added > 0) {
-                    showToast(`${data.added} proxies importados!`);
-                    document.getElementById('bulkText').value = '';
-                    loadData();
-                }
-            } catch (err) {
-                showToast('Erro na importação', 'error');
-            }
-        }
-
-        // Auto-refresh every 60 seconds
-        setInterval(loadData, 60000);
-
-        // Initial load
         loadData();
+        setInterval(loadData, 60000);
     </script>
 </body>
 

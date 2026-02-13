@@ -3,6 +3,7 @@ import { ScraperService } from './ScraperService.js';
 import { HoroscopoScraper } from '../scrapers/HoroscopoScraper.js';
 import { ContentScraper } from '../scrapers/ContentScraper.js';
 import { PalpitesScraper } from '../scrapers/PalpitesScraper.js';
+import { CotacaoScraper } from '../scrapers/CotacaoScraper.js';
 import { LOTERIAS, LotericaConfig } from '../config/loterias.js';
 import { logger } from '../utils/logger.js';
 import { scrapingStatusService } from './ScrapingStatusService.js';
@@ -19,6 +20,7 @@ export class CronService {
     private horoscopo = new HoroscopoScraper();
     private content = new ContentScraper();
     private palpites = new PalpitesScraper();
+    private cotacao = new CotacaoScraper();
     private jobs: CronJob[] = [];
     private isStarted = false;
     private serviceName = 'CronService';
@@ -60,6 +62,11 @@ export class CronService {
         // 5. Conteúdo (Semanal)
         this.jobs.push(
             new CronJob('0 9 * * 1', () => this.runContent(), null, true, 'America/Sao_Paulo')
+        );
+
+        // 6. Cotações (00:00 DIARIO)
+        this.jobs.push(
+            new CronJob('0 0 * * *', () => this.runCotacoes(), null, true, 'America/Sao_Paulo')
         );
 
         logger.success(this.serviceName, 'Smart Scheduler iniciado (Ciclo de 5 min)');
@@ -115,6 +122,20 @@ export class CronService {
         // Após as 6h e sem horóscopo: executa imediatamente
         logger.info(this.serviceName, `Horóscopo: São ${horaAtual}h e não há dados. Executando scraping imediato...`);
         await this.runHoroscopoWithRetry();
+    }
+
+    async checkCotacoesOnStartup(): Promise<void> {
+        const today = new Date().toISOString().split('T')[0];
+        // Verificar se houve atualização hoje
+        const check = db.prepare("SELECT count(*) as count FROM cotacoes WHERE date(updated_at) = ?").get(today) as { count: number };
+
+        if (check && check.count > 0) {
+            logger.info(this.serviceName, `Cotações de hoje (${today}) já existem. Pulando verificação inicial.`);
+            return;
+        }
+
+        logger.info(this.serviceName, 'Cotações não encontradas ou desatualizadas. Iniciando sincronização...');
+        await this.runCotacoes();
     }
 
     private async runSmartScheduler() {
@@ -313,6 +334,15 @@ export class CronService {
             await this.palpites.execute([], 'palpites');
         } catch (error: any) {
             logger.error(this.serviceName, 'Erro ao buscar palpites:', error.message);
+        }
+    }
+
+    private async runCotacoes() {
+        logger.info(this.serviceName, 'Atualizando cotações...');
+        try {
+            await this.cotacao.execute();
+        } catch (error: any) {
+            logger.error(this.serviceName, 'Erro nas cotações:', error.message);
         }
     }
 
